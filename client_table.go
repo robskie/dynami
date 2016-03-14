@@ -18,7 +18,7 @@ func (c *Client) CreateTable(table *schema.Table) error {
 		TableName:              aws.String(table.Name),
 		AttributeDefinitions:   dbAttributeDefinitions(table.Attributes),
 		ProvisionedThroughput:  dbProvisionedThroughput(table.Throughput),
-		KeySchema:              dbKeySchema(table.KeySchema),
+		KeySchema:              dbKeySchema(table.Key),
 		LocalSecondaryIndexes:  dbLocalSecondaryIndexes(table.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: dbGlobalSecondaryIndexes(table.GlobalSecondaryIndexes),
 		StreamSpecification:    table.PStreamSpec,
@@ -56,7 +56,7 @@ func (c *Client) DescribeTable(tableName string) (*schema.Table, error) {
 		Name:                   tableName,
 		Attributes:             attributeDefinitions(desc.AttributeDefinitions),
 		Throughput:             throughput(desc.ProvisionedThroughput),
-		KeySchema:              keySchema(desc.KeySchema),
+		Key:              keySchema(desc.KeySchema),
 		LocalSecondaryIndexes:  secondaryIndexes(desc.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: secondaryIndexes(desc.GlobalSecondaryIndexes),
 	}
@@ -85,7 +85,7 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 		Name:                   tableName,
 		Attributes:             attributeDefinitions(desc.AttributeDefinitions),
 		Throughput:             throughput(desc.ProvisionedThroughput),
-		KeySchema:              keySchema(desc.KeySchema),
+		Key:              keySchema(desc.KeySchema),
 		LocalSecondaryIndexes:  secondaryIndexes(desc.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: secondaryIndexes(desc.GlobalSecondaryIndexes),
 	}
@@ -113,7 +113,7 @@ func (c *Client) ClearTable(tableName string) error {
 	}
 
 	const keysPerBatch = 25
-	keySchema := desc.KeySchema
+	keySchema := desc.Key
 	it := c.Query(tableName).Consistent().Run()
 	keys := make([]map[string]interface{}, 0, keysPerBatch)
 	for it.HasNext() {
@@ -122,7 +122,7 @@ func (c *Client) ClearTable(tableName string) error {
 
 		key := map[string]interface{}{}
 		for _, k := range keySchema {
-			key[k.AttributeName] = item[k.AttributeName]
+			key[k.Name] = item[k.Name]
 		}
 		keys = append(keys, key)
 
@@ -168,19 +168,19 @@ func (c *Client) ListTables() ([]string, error) {
 	return tables, err
 }
 
-func dbKeySchema(ks []schema.KeySchema) []*db.KeySchemaElement {
+func dbKeySchema(ks []schema.Key) []*db.KeySchemaElement {
 	keySchema := make([]*db.KeySchemaElement, len(ks))
 	for i, ke := range ks {
 		keySchema[i] = &db.KeySchemaElement{
-			AttributeName: aws.String(ke.AttributeName),
-			KeyType:       aws.String(string(ke.KeyType)),
+			AttributeName: aws.String(ke.Name),
+			KeyType:       aws.String(string(ke.Type)),
 		}
 	}
 
 	return keySchema
 }
 
-func dbAttributeDefinitions(attrs []schema.AttributeDefinition) []*db.AttributeDefinition {
+func dbAttributeDefinitions(attrs []schema.Attribute) []*db.AttributeDefinition {
 	defs := make([]*db.AttributeDefinition, len(attrs))
 	for i, attr := range attrs {
 		defs[i] = &db.AttributeDefinition{
@@ -210,7 +210,7 @@ func dbLocalSecondaryIndex(idx schema.SecondaryIndex) *db.LocalSecondaryIndex {
 	return &db.LocalSecondaryIndex{
 		IndexName:  aws.String(idx.Name),
 		Projection: dbProjection(idx.Projection),
-		KeySchema:  dbKeySchema(idx.KeySchema),
+		KeySchema:  dbKeySchema(idx.Key),
 	}
 }
 
@@ -235,7 +235,7 @@ func dbGlobalSecondaryIndex(idx schema.SecondaryIndex) *db.GlobalSecondaryIndex 
 	return &db.GlobalSecondaryIndex{
 		IndexName:             aws.String(idx.Name),
 		Projection:            dbProjection(idx.Projection),
-		KeySchema:             dbKeySchema(idx.KeySchema),
+		KeySchema:             dbKeySchema(idx.Key),
 		ProvisionedThroughput: dbProvisionedThroughput(idx.Throughput),
 	}
 }
@@ -250,10 +250,10 @@ func dbGlobalSecondaryIndexes(idxs []schema.SecondaryIndex) []*db.GlobalSecondar
 	return globalIdxs
 }
 
-func attributeDefinitions(dbAttrs []*db.AttributeDefinition) []schema.AttributeDefinition {
-	attrs := make([]schema.AttributeDefinition, len(dbAttrs))
+func attributeDefinitions(dbAttrs []*db.AttributeDefinition) []schema.Attribute {
+	attrs := make([]schema.Attribute, len(dbAttrs))
 	for i, attrDef := range dbAttrs {
-		attrs[i] = schema.AttributeDefinition{
+		attrs[i] = schema.Attribute{
 			Name: *attrDef.AttributeName,
 			Type: schema.AttributeType(*attrDef.AttributeType),
 		}
@@ -262,12 +262,12 @@ func attributeDefinitions(dbAttrs []*db.AttributeDefinition) []schema.AttributeD
 	return attrs
 }
 
-func keySchema(dbKeySchema []*db.KeySchemaElement) []schema.KeySchema {
-	keySchema := make([]schema.KeySchema, len(dbKeySchema))
+func keySchema(dbKeySchema []*db.KeySchemaElement) []schema.Key {
+	keySchema := make([]schema.Key, len(dbKeySchema))
 	for i, ke := range dbKeySchema {
-		keySchema[i] = schema.KeySchema{
-			AttributeName: *ke.AttributeName,
-			KeyType:       schema.KeyType(*ke.KeyType),
+		keySchema[i] = schema.Key{
+			Name: *ke.AttributeName,
+			Type:       schema.KeyType(*ke.KeyType),
 		}
 	}
 
@@ -309,7 +309,7 @@ func secondaryIndex(dbSecondaryIdx interface{}) schema.SecondaryIndex {
 	index := schema.SecondaryIndex{
 		Name:       vidxName.Elem().Interface().(string),
 		Projection: projection(vprojection.Interface().(*db.Projection)),
-		KeySchema:  keySchema(vkeySchema.Interface().([]*db.KeySchemaElement)),
+		Key:  keySchema(vkeySchema.Interface().([]*db.KeySchemaElement)),
 	}
 
 	if vthroughput.Kind() != reflect.Invalid {

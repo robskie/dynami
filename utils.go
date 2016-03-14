@@ -56,12 +56,12 @@ func getPrimaryKey(item interface{}) (*dbkey, error) {
 
 	schema := sc.GetSchema(item)
 	key := &dbkey{value: dbitem{}}
-	for _, k := range schema.KeySchema {
-		v := valueByName(val, k.AttributeName)
+	for _, k := range schema.Key {
+		v := valueByName(val, k.Name)
 		if isZeroValue(v) {
 			return nil, fmt.Errorf("dynamini: incomplete primary key")
 		}
-		key.value[k.AttributeName] = kv[k.AttributeName]
+		key.value[k.Name] = kv[k.Name]
 	}
 
 	if len(key.value) == 0 {
@@ -91,14 +91,14 @@ func getSecondaryKey(item interface{}) (*dbkey, error) {
 Indices:
 	// Get secondary indices
 	for i, idx := range secondaryIdxs {
-		for _, k := range idx.KeySchema {
-			v := val.FieldByName(k.AttributeName)
+		for _, k := range idx.Key {
+			v := val.FieldByName(k.Name)
 			if isZeroValue(v) {
 				key.value = dbitem{}
 				continue Indices
 			}
 
-			key.value[k.AttributeName] = kv[k.AttributeName]
+			key.value[k.Name] = kv[k.Name]
 		}
 
 		key.indexName = idx.Name

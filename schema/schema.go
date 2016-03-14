@@ -28,9 +28,9 @@ const (
 	StringType AttributeType = "S"
 )
 
-// AttributeDefinition describes
-// an attribute used for key schemas.
-type AttributeDefinition struct {
+// Attribute describes a key attribute
+// by providing its attribute type.
+type Attribute struct {
 	Name string
 	Type AttributeType
 }
@@ -68,11 +68,11 @@ const (
 	RangeKey KeyType = db.KeyTypeRange
 )
 
-// KeySchema describes the key
-// attributes of a table or index.
-type KeySchema struct {
-	AttributeName string
-	KeyType       KeyType
+// Key describes a key attribute
+// by providing its key type.
+type Key struct {
+	Name string
+	Type KeyType
 }
 
 // Status represents the current state
@@ -98,7 +98,7 @@ type iprivate struct {
 // SecondaryIndex contains the properties of an index.
 type SecondaryIndex struct {
 	Name       string
-	KeySchema  []KeySchema
+	Key        []Key
 	Projection *Projection
 	Throughput *Throughput
 
@@ -134,9 +134,9 @@ type tprivate struct {
 // Table contains the properties of a table.
 type Table struct {
 	Name                   string
-	Attributes             []AttributeDefinition
+	Key                    []Key
+	Attributes             []Attribute
 	Throughput             *Throughput
-	KeySchema              []KeySchema
 	LocalSecondaryIndexes  []SecondaryIndex
 	GlobalSecondaryIndexes []SecondaryIndex
 
@@ -192,14 +192,14 @@ func NewTable(
 	sc := GetSchema(item)
 
 	// Begin copying fields...
-	table.KeySchema = make(
-		[]KeySchema,
-		len(sc.KeySchema),
+	table.Key = make(
+		[]Key,
+		len(sc.Key),
 	)
-	copy(table.KeySchema, sc.KeySchema)
+	copy(table.Key, sc.Key)
 
 	table.Attributes = make(
-		[]AttributeDefinition,
+		[]Attribute,
 		len(sc.Attributes),
 	)
 	copy(table.Attributes, sc.Attributes)

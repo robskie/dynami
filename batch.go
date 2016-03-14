@@ -61,13 +61,13 @@ type ekey struct {
 // getIndexKey returns the string
 // representation of ikey for a given
 // dynamodb item.
-func getIndexKey(tableName string, keySchema []sc.KeySchema, item dbitem) string {
+func getIndexKey(tableName string, keySchema []sc.Key, item dbitem) string {
 	ik := &ikey{tableName: tableName}
 
 	mkey := map[string]interface{}{}
 	dbattribute.ConvertFromMap(item, &mkey)
 	for _, k := range keySchema {
-		ik.keys = append(ik.keys, mkey[k.AttributeName])
+		ik.keys = append(ik.keys, mkey[k.Name])
 	}
 
 	return ik.toStr()
@@ -83,7 +83,7 @@ type batchOp struct {
 	unprocIdxs map[string][]int
 	unpCount   int
 
-	schemas map[string][]sc.KeySchema
+	schemas map[string][]sc.Key
 
 	errs map[ekey]error
 }
@@ -93,7 +93,7 @@ func newBatchOp() *batchOp {
 		itemIdxs:   map[string][]int{},
 		unproc:     map[string][]dbitem{},
 		unprocIdxs: map[string][]int{},
-		schemas:    map[string][]sc.KeySchema{},
+		schemas:    map[string][]sc.Key{},
 		errs:       map[ekey]error{},
 	}
 }
@@ -128,7 +128,7 @@ func (b *batchOp) addItems(
 	b.unpCount += v.Len()
 
 	schema := sc.GetSchema(v.Index(0).Interface())
-	kschema := schema.KeySchema
+	kschema := schema.Key
 	b.schemas[tableName] = kschema
 
 	dups := map[string][]int{}

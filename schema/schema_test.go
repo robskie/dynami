@@ -27,13 +27,13 @@ func TestNewTable(t *testing.T) {
 	assert.Equal(t, "TestTable", table.Name)
 	assert.Equal(t, &Throughput{1, 2}, table.Throughput)
 
-	expectedKeySchema := []KeySchema{
+	expectedKeySchema := []Key{
 		{"Hash", HashKey},
 		{"Range", RangeKey},
 	}
-	assert.Equal(t, expectedKeySchema, table.KeySchema)
+	assert.Equal(t, expectedKeySchema, table.Key)
 
-	expectedAttrs := []AttributeDefinition{
+	expectedAttrs := []Attribute{
 		{"Hash", StringType},
 		{"Range", NumberType},
 		{"AnotherRange", StringType},
@@ -47,7 +47,7 @@ func TestNewTable(t *testing.T) {
 	expectedLocalIdx := []SecondaryIndex{
 		{
 			Name: "LocalIndex",
-			KeySchema: []KeySchema{
+			Key: []Key{
 				{"Hash", HashKey},
 				{"AnotherRange", RangeKey},
 			},
@@ -69,7 +69,7 @@ func TestNewTable(t *testing.T) {
 	expectedGlobalIdx := []SecondaryIndex{
 		{
 			Name: "GlobalIndex",
-			KeySchema: []KeySchema{
+			Key: []Key{
 				{"GlobalHash", HashKey},
 			},
 			Projection: &Projection{

@@ -42,12 +42,12 @@ func GetSchema(item interface{}) *Table {
 			}
 			sort.Strings(mk)
 
-			ks := make([]KeySchema, len(mk))
+			ks := make([]Key, len(mk))
 			for i, k := range mk {
-				ks[i] = KeySchema{AttributeName: k}
+				ks[i] = Key{Name: k}
 			}
 
-			return &Table{KeySchema: ks}
+			return &Table{Key: ks}
 		}
 
 		// Process struct schema
@@ -55,12 +55,12 @@ func GetSchema(item interface{}) *Table {
 		// map key is the index name for
 		// the key element. Empty key means
 		// it is a primary key.
-		hashes := map[string]*KeySchema{}
-		ranges := map[string]*KeySchema{}
+		hashes := map[string]*Key{}
+		ranges := map[string]*Key{}
 		projs := map[string]map[string]bool{}
 
 		indices := map[string]bool{}
-		defs := map[string]*AttributeDefinition{}
+		defs := map[string]*Attribute{}
 
 		// Extract table schema from field tags
 		t := v.Type()
@@ -75,17 +75,17 @@ func GetSchema(item interface{}) *Table {
 
 			keyTag := f.Tag.Get("dbkey")
 			if keyTag != "" {
-				ks := &KeySchema{AttributeName: f.Name}
-				defs[f.Name] = &AttributeDefinition{
+				ks := &Key{Name: f.Name}
+				defs[f.Name] = &Attribute{
 					Name: f.Name,
 					Type: getAttrType(f.Type),
 				}
 
 				if keyTag == tagHashAttr {
-					ks.KeyType = HashKey
+					ks.Type = HashKey
 					hashes[""] = ks
 				} else if keyTag == tagRangeAttr {
-					ks.KeyType = RangeKey
+					ks.Type = RangeKey
 					ranges[""] = ks
 				} else {
 					panic("dynamini: invalid dbkey field tag")
@@ -108,23 +108,23 @@ func GetSchema(item interface{}) *Table {
 					}
 
 					if parts[i] == tagHashAttr {
-						defs[f.Name] = &AttributeDefinition{
+						defs[f.Name] = &Attribute{
 							Name: f.Name,
 							Type: getAttrType(f.Type),
 						}
-						hashes[parts[i+1]] = &KeySchema{
-							AttributeName: f.Name,
-							KeyType:       HashKey,
+						hashes[parts[i+1]] = &Key{
+							Name: f.Name,
+							Type:       HashKey,
 						}
 						proj[f.Name] = true
 					} else if parts[i] == tagRangeAttr {
-						defs[f.Name] = &AttributeDefinition{
+						defs[f.Name] = &Attribute{
 							Name: f.Name,
 							Type: getAttrType(f.Type),
 						}
-						ranges[parts[i+1]] = &KeySchema{
-							AttributeName: f.Name,
-							KeyType:       RangeKey,
+						ranges[parts[i+1]] = &Key{
+							Name: f.Name,
+							Type:       RangeKey,
 						}
 						proj[f.Name] = true
 					} else if parts[i] == tagProjectedAttr {
@@ -137,7 +137,7 @@ func GetSchema(item interface{}) *Table {
 		}
 
 		// Create primary key schema
-		pkey := []KeySchema{}
+		pkey := []Key{}
 		pkhash, ok := hashes[""]
 		if !ok {
 			panic("dynamini: primary key is not tagged")
@@ -151,7 +151,7 @@ func GetSchema(item interface{}) *Table {
 		// Project primary key to all indices
 		for _, projs := range projs {
 			for _, pk := range pkey {
-				projs[pk.AttributeName] = true
+				projs[pk.Name] = true
 			}
 		}
 
@@ -176,15 +176,15 @@ func GetSchema(item interface{}) *Table {
 				// secondary indices.
 				hk = hashes[""]
 			}
-			sidx.KeySchema = append(sidx.KeySchema, *hk)
+			sidx.Key = append(sidx.Key, *hk)
 
 			// Add range key
 			if rk, ok := ranges[idx]; ok {
-				sidx.KeySchema = append(sidx.KeySchema, *rk)
+				sidx.Key = append(sidx.Key, *rk)
 			}
 
 			// Determine if global or local secondary index
-			if hk.AttributeName == pkhash.AttributeName {
+			if hk.Name == pkhash.Name {
 				localIdxs = append(localIdxs, sidx)
 			} else {
 				globalIdxs = append(globalIdxs, sidx)
@@ -192,14 +192,14 @@ func GetSchema(item interface{}) *Table {
 		}
 
 		// Create attribute definitions
-		attributes := make([]AttributeDefinition, 0, len(defs))
+		attributes := make([]Attribute, 0, len(defs))
 		for _, def := range defs {
 			attributes = append(attributes, *def)
 		}
 
 		s = &Table{
 			Attributes:             attributes,
-			KeySchema:              pkey,
+			Key:              pkey,
 			LocalSecondaryIndexes:  localIdxs,
 			GlobalSecondaryIndexes: globalIdxs,
 		}

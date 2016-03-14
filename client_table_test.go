@@ -17,20 +17,20 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 			Read:  1,
 			Write: 2,
 		},
-		Attributes: []sc.AttributeDefinition{
+		Attributes: []sc.Attribute{
 			{"Hash", sc.StringType},
 			{"Range", sc.NumberType},
 			{"AnotherRange", sc.StringType},
 			{"GlobalHash", sc.StringType},
 		},
-		KeySchema: []sc.KeySchema{
+		Key: []sc.Key{
 			{"Hash", sc.HashKey},
 			{"Range", sc.RangeKey},
 		},
 		LocalSecondaryIndexes: []sc.SecondaryIndex{
 			{
 				Name: "LocalIndex",
-				KeySchema: []sc.KeySchema{
+				Key: []sc.Key{
 					{"Hash", sc.HashKey},
 					{"AnotherRange", sc.RangeKey},
 				},
@@ -42,10 +42,10 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 		GlobalSecondaryIndexes: []sc.SecondaryIndex{
 			{
 				Name: "GlobalIndex",
-				KeySchema: []sc.KeySchema{
+				Key: []sc.Key{
 					{
-						AttributeName: "GlobalHash",
-						KeyType:       sc.HashKey,
+						Name: "GlobalHash",
+						Type:       sc.HashKey,
 					},
 				},
 				Throughput: &sc.Throughput{
@@ -270,7 +270,7 @@ func (suite *DatabaseTestSuite) TestDescribeTable() {
 	// Check returned table
 	assert.Equal(*desc.TableName, table.Name)
 	assert.Equal(throughput(desc.ProvisionedThroughput), table.Throughput)
-	assert.Equal(keySchema(desc.KeySchema), table.KeySchema)
+	assert.Equal(keySchema(desc.KeySchema), table.Key)
 
 	assert.Equal(
 		attributeDefinitions(desc.AttributeDefinitions),

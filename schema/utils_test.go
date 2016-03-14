@@ -21,7 +21,7 @@ func TestFieldTags(t *testing.T) {
 
 	s := GetSchema(tStruct{})
 
-	expectedAttrs := []AttributeDefinition{
+	expectedAttrs := []Attribute{
 		{"Hash", StringType},
 		{"Range", NumberType},
 		{"AnotherRange", StringType},
@@ -32,16 +32,16 @@ func TestFieldTags(t *testing.T) {
 		assert.Contains(t, s.Attributes, attr)
 	}
 
-	expectedKey := []KeySchema{
+	expectedKey := []Key{
 		{"Hash", HashKey},
 		{"Range", RangeKey},
 	}
-	assert.Equal(t, expectedKey, s.KeySchema)
+	assert.Equal(t, expectedKey, s.Key)
 
 	expectedLocalIdx := []SecondaryIndex{
 		{
 			Name: "SecondaryIndex",
-			KeySchema: []KeySchema{
+			Key: []Key{
 				{"Hash", HashKey},
 				{"AnotherRange", RangeKey},
 			},
@@ -63,7 +63,7 @@ func TestFieldTags(t *testing.T) {
 	expectedGlobalIdx := []SecondaryIndex{
 		{
 			Name: "GlobalIndex",
-			KeySchema: []KeySchema{
+			Key: []Key{
 				{"GlobalHash", HashKey},
 			},
 			Projection: &Projection{
