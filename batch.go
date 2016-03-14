@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
+	sc "github.com/robskie/dynamini/schema"
+
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
@@ -59,13 +61,13 @@ type ekey struct {
 // getIndexKey returns the string
 // representation of ikey for a given
 // dynamodb item.
-func getIndexKey(tableName string, keySchema []kelement, item dbitem) string {
+func getIndexKey(tableName string, keySchema []sc.KeySchema, item dbitem) string {
 	ik := &ikey{tableName: tableName}
 
 	mkey := map[string]interface{}{}
 	dbattribute.ConvertFromMap(item, &mkey)
 	for _, k := range keySchema {
-		ik.keys = append(ik.keys, mkey[k.name])
+		ik.keys = append(ik.keys, mkey[k.AttributeName])
 	}
 
 	return ik.toStr()
@@ -81,7 +83,7 @@ type batchOp struct {
 	unprocIdxs map[string][]int
 	unpCount   int
 
-	schemas map[string][]kelement
+	schemas map[string][]sc.KeySchema
 
 	errs map[ekey]error
 }
@@ -91,7 +93,7 @@ func newBatchOp() *batchOp {
 		itemIdxs:   map[string][]int{},
 		unproc:     map[string][]dbitem{},
 		unprocIdxs: map[string][]int{},
-		schemas:    map[string][]kelement{},
+		schemas:    map[string][]sc.KeySchema{},
 		errs:       map[ekey]error{},
 	}
 }
@@ -125,8 +127,8 @@ func (b *batchOp) addItems(
 	}
 	b.unpCount += v.Len()
 
-	schema := getSchema(v.Index(0).Interface())
-	kschema := schema.key
+	schema := sc.GetSchema(v.Index(0).Interface())
+	kschema := schema.KeySchema
 	b.schemas[tableName] = kschema
 
 	dups := map[string][]int{}

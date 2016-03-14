@@ -1,12 +1,6 @@
 package dynamini
 
-import (
-	"sort"
-
-	sc "github.com/robskie/dynamini/schema"
-
-	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-)
+import dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
 func (suite *DatabaseTestSuite) TestGetKey() {
 	assert := suite.Assert()
@@ -40,79 +34,4 @@ func (suite *DatabaseTestSuite) TestGetKey() {
 	assert.Equal("GenreIndex", key.indexName)
 	assert.Equal(key.value["Genre"], item["Genre"])
 	assert.Equal(key.value["Title"], item["Title"])
-}
-
-func (suite *DatabaseTestSuite) TestFieldTags() {
-	assert := suite.Assert()
-
-	type tStruct struct {
-		Hash  string `dbkey:"hash"`
-		Range int    `dbkey:"range"`
-
-		AnotherRange string `dbindex:"range,SecondaryIndex"`
-		GlobalHash   string `dbindex:"hash,GlobalIndex"`
-
-		Projected int `dbindex:"project,GlobalIndex"`
-	}
-
-	expectedKey := []kelement{
-		{
-			name:     "Hash",
-			keyType:  sc.HashKey,
-			attrType: sc.StringType,
-		},
-		{
-			name:     "Range",
-			keyType:  sc.RangeKey,
-			attrType: sc.NumberType,
-		},
-	}
-
-	expectedIndices := []ischema{
-		{
-			name: "SecondaryIndex",
-			key: []kelement{
-				{
-					name:     expectedKey[0].name,
-					keyType:  expectedKey[0].keyType,
-					attrType: expectedKey[0].attrType,
-				},
-				{
-					name:     "AnotherRange",
-					keyType:  sc.RangeKey,
-					attrType: sc.StringType,
-				},
-			},
-			projections: []string{
-				"AnotherRange",
-				"Hash",
-				"Range",
-			},
-			indexType: localIndexType,
-		},
-		{
-			name: "GlobalIndex",
-			key: []kelement{
-				{
-					name:     "GlobalHash",
-					keyType:  sc.HashKey,
-					attrType: sc.StringType,
-				},
-			},
-			projections: []string{
-				"GlobalHash",
-				"Hash",
-				"Projected",
-				"Range",
-			},
-			indexType: globalIndexType,
-		},
-	}
-
-	s := getSchema(tStruct{})
-	assert.Equal(expectedKey, s.key)
-	for _, idx := range s.indices {
-		sort.Strings(idx.projections)
-		assert.Contains(expectedIndices, idx)
-	}
 }

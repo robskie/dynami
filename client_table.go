@@ -19,6 +19,12 @@ func NewTable(
 	item interface{},
 	throughput map[string]*schema.Throughput) *schema.Table {
 
+	if tableName == "" {
+		panic("dynamini: table name must not be empty")
+	} else if throughput[tableName] == nil {
+		panic("dynamini: no provisioned throughput for table")
+	}
+
 	table := &schema.Table{
 		Name:       tableName,
 		Throughput: throughput[tableName],
@@ -27,77 +33,46 @@ func NewTable(
 	table.PItemCount = -1
 	table.PStatus = schema.UnknownStatus
 
-	sc := getSchema(item)
-	attrs := map[string]schema.AttributeType{}
+	// Get incomplete table schema
+	sc := schema.GetSchema(item)
 
-	// Get primary key
-	pk := sc.key
-	keySchema := make([]schema.KeySchema, len(pk))
-	for i, ke := range pk {
-		keySchema[i] = schema.KeySchema{
-			AttributeName: ke.name,
-			KeyType:       ke.keyType,
+	// Begin copying fields...
+	table.KeySchema = make(
+		[]schema.KeySchema,
+		len(sc.KeySchema),
+	)
+	copy(table.KeySchema, sc.KeySchema)
+
+	table.Attributes = make(
+		[]schema.AttributeDefinition,
+		len(sc.Attributes),
+	)
+	copy(table.Attributes, sc.Attributes)
+
+	table.LocalSecondaryIndexes = make(
+		[]schema.SecondaryIndex,
+		len(sc.LocalSecondaryIndexes),
+	)
+	copy(table.LocalSecondaryIndexes, sc.LocalSecondaryIndexes)
+
+	table.GlobalSecondaryIndexes = make(
+		[]schema.SecondaryIndex,
+		len(sc.GlobalSecondaryIndexes),
+	)
+	copy(table.GlobalSecondaryIndexes, sc.GlobalSecondaryIndexes)
+
+	// Add provisioned throughput for all global secondary indices
+	for i, idx := range table.GlobalSecondaryIndexes {
+		tp := throughput[idx.Name]
+		if tp == nil {
+			panic(fmt.Errorf(
+				"dynamini: no provisioned throughput for global index (%s)",
+				idx.Name,
+			))
 		}
-		attrs[ke.name] = ke.attrType
+
+		table.GlobalSecondaryIndexes[i].Throughput = tp
 	}
-	table.KeySchema = keySchema
-
-	// Get secondary indices
-	localIdxs := []schema.SecondaryIndex{}
-	globalIdxs := []schema.SecondaryIndex{}
-	pkhash := keySchema[0].AttributeName
-	for _, idx := range sc.indices {
-		sidx := schema.SecondaryIndex{
-			Name:       idx.name,
-			Throughput: throughput[idx.name],
-		}
-
-		if len(idx.projections) == 0 {
-			sidx.Projection = &schema.Projection{
-				Type: schema.ProjectKeysOnly,
-			}
-		} else {
-			sidx.Projection = &schema.Projection{
-				Type:    schema.ProjectInclude,
-				Include: idx.projections,
-			}
-		}
-
-		ik := idx.key
-		ks := make([]schema.KeySchema, len(ik))
-		for i, ke := range ik {
-			ks[i] = schema.KeySchema{
-				AttributeName: ke.name,
-				KeyType:       ke.keyType,
-			}
-			attrs[ke.name] = ke.attrType
-		}
-		sidx.KeySchema = ks
-
-		if ks[0].AttributeName == pkhash {
-			localIdxs = append(localIdxs, sidx)
-		} else {
-			globalIdxs = append(globalIdxs, sidx)
-			if sidx.Throughput == nil {
-				panic(fmt.Errorf(
-					"dynamini: no provisioned throughput for global index (%s)",
-					sidx.Name,
-				))
-			}
-		}
-	}
-	table.LocalSecondaryIndexes = localIdxs
-	table.GlobalSecondaryIndexes = globalIdxs
-
-	// Add attributes
-	attrDefs := make([]schema.AttributeDefinition, 0, len(attrs))
-	for attrName, attrType := range attrs {
-		attrDefs = append(attrDefs, schema.AttributeDefinition{
-			Name: attrName,
-			Type: attrType,
-		})
-	}
-	table.Attributes = attrDefs
 
 	return table
 }
