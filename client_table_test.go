@@ -1,8 +1,6 @@
 package dynamini
 
 import (
-	"sort"
-
 	sc "github.com/robskie/dynamini/schema"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,90 +8,15 @@ import (
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func (suite *DatabaseTestSuite) TestNewTable() {
-	assert := suite.Assert()
-
-	type tStruct struct {
-		Hash  string `dbkey:"hash"`
-		Range int    `dbkey:"range"`
-
-		AnotherRange string `dbindex:"range,LocalIndex"`
-		GlobalHash   string `dbindex:"hash,GlobalIndex"`
-
-		Projected int `dbindex:"project,GlobalIndex"`
-	}
-
-	table := NewTable("TestTable", tStruct{}, map[string]*sc.Throughput{
-		"TestTable":   &sc.Throughput{1, 2},
-		"GlobalIndex": &sc.Throughput{3, 4},
-	})
-
-	assert.Equal("TestTable", table.Name)
-	assert.Equal(&sc.Throughput{1, 2}, table.Throughput)
-
-	expectedKeySchema := []sc.KeySchema{
-		{"Hash", sc.HashKey},
-		{"Range", sc.RangeKey},
-	}
-	assert.Equal(expectedKeySchema, table.KeySchema)
-
-	expectedAttrs := []sc.AttributeDefinition{
-		{"Hash", sc.StringType},
-		{"Range", sc.NumberType},
-		{"AnotherRange", sc.StringType},
-		{"GlobalHash", sc.StringType},
-	}
-	for _, attr := range table.Attributes {
-		assert.Contains(expectedAttrs, attr)
-	}
-	assert.Len(table.Attributes, len(expectedAttrs))
-
-	expectedLocalIdx := sc.SecondaryIndex{
-		Name: "LocalIndex",
-		KeySchema: []sc.KeySchema{
-			{"Hash", sc.HashKey},
-			{"AnotherRange", sc.RangeKey},
-		},
-		Projection: &sc.Projection{
-			Type: sc.ProjectInclude,
-			Include: []string{
-				"AnotherRange",
-				"Hash",
-				"Range",
-			},
-		},
-	}
-	assert.Len(table.LocalSecondaryIndexes, 1)
-	sort.Strings(table.LocalSecondaryIndexes[0].Projection.Include)
-	assert.Equal(expectedLocalIdx, table.LocalSecondaryIndexes[0])
-
-	expectedGlobalIdx := sc.SecondaryIndex{
-		Name: "GlobalIndex",
-		KeySchema: []sc.KeySchema{
-			{"GlobalHash", sc.HashKey},
-		},
-		Projection: &sc.Projection{
-			Type: sc.ProjectInclude,
-			Include: []string{
-				"GlobalHash",
-				"Hash",
-				"Projected",
-				"Range",
-			},
-		},
-		Throughput: &sc.Throughput{3, 4},
-	}
-	assert.Len(table.GlobalSecondaryIndexes, 1)
-	sort.Strings(table.GlobalSecondaryIndexes[0].Projection.Include)
-	assert.Equal(expectedGlobalIdx, table.GlobalSecondaryIndexes[0])
-}
-
 func (suite *DatabaseTestSuite) TestCreateTable() {
 	assert := suite.Assert()
 
 	table := &sc.Table{
-		Name:       "TestTable",
-		Throughput: &sc.Throughput{1, 2},
+		Name: "TestTable",
+		Throughput: &sc.Throughput{
+			Read:  1,
+			Write: 2,
+		},
 		Attributes: []sc.AttributeDefinition{
 			{"Hash", sc.StringType},
 			{"Range", sc.NumberType},
@@ -120,9 +43,15 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 			{
 				Name: "GlobalIndex",
 				KeySchema: []sc.KeySchema{
-					{"GlobalHash", sc.HashKey},
+					{
+						AttributeName: "GlobalHash",
+						KeyType:       sc.HashKey,
+					},
 				},
-				Throughput: &sc.Throughput{3, 4},
+				Throughput: &sc.Throughput{
+					Read:  3,
+					Write: 4,
+				},
 				Projection: &sc.Projection{
 					Type: sc.ProjectInclude,
 					Include: []string{

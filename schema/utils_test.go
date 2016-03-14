@@ -27,7 +27,7 @@ func TestFieldTags(t *testing.T) {
 		{"AnotherRange", StringType},
 		{"GlobalHash", StringType},
 	}
-	assert.Len(t, expectedAttrs, len(s.Attributes))
+	assert.Len(t, s.Attributes, len(expectedAttrs))
 	for _, attr := range expectedAttrs {
 		assert.Contains(t, s.Attributes, attr)
 	}
@@ -56,6 +56,7 @@ func TestFieldTags(t *testing.T) {
 		},
 	}
 	require.Len(t, s.LocalSecondaryIndexes, 1)
+	require.NotNil(t, s.LocalSecondaryIndexes[0].Projection)
 	sort.Strings(s.LocalSecondaryIndexes[0].Projection.Include)
 	assert.Equal(t, expectedLocalIdx, s.LocalSecondaryIndexes)
 
@@ -77,6 +78,7 @@ func TestFieldTags(t *testing.T) {
 		},
 	}
 	require.Len(t, s.GlobalSecondaryIndexes, 1)
+	require.NotNil(t, s.GlobalSecondaryIndexes[0].Projection)
 	sort.Strings(s.GlobalSecondaryIndexes[0].Projection.Include)
 	assert.Equal(t, expectedGlobalIdx, s.GlobalSecondaryIndexes)
 }

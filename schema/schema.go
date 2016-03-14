@@ -3,6 +3,7 @@
 package schema
 
 import (
+	"fmt"
 	"time"
 
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
@@ -162,4 +163,71 @@ func (t *Table) Status() Status {
 // the table was created in unix epoch time.
 func (t *Table) CreationDate() time.Time {
 	return t.PCreationDate
+}
+
+// NewTable returns a new table from an item. item must be
+// a struct or a pointer to struct with properly tagged fields.
+// throughput should contain the provisioned throughput for the
+// given table and any additional secondary global indices.
+func NewTable(
+	tableName string,
+	item interface{},
+	throughput map[string]*Throughput) *Table {
+
+	if tableName == "" {
+		panic("dynamini: table name must not be empty")
+	} else if throughput[tableName] == nil {
+		panic("dynamini: no provisioned throughput for table")
+	}
+
+	table := &Table{
+		Name:       tableName,
+		Throughput: throughput[tableName],
+	}
+	table.PSize = -1
+	table.PItemCount = -1
+	table.PStatus = UnknownStatus
+
+	// Get incomplete table schema
+	sc := GetSchema(item)
+
+	// Begin copying fields...
+	table.KeySchema = make(
+		[]KeySchema,
+		len(sc.KeySchema),
+	)
+	copy(table.KeySchema, sc.KeySchema)
+
+	table.Attributes = make(
+		[]AttributeDefinition,
+		len(sc.Attributes),
+	)
+	copy(table.Attributes, sc.Attributes)
+
+	table.LocalSecondaryIndexes = make(
+		[]SecondaryIndex,
+		len(sc.LocalSecondaryIndexes),
+	)
+	copy(table.LocalSecondaryIndexes, sc.LocalSecondaryIndexes)
+
+	table.GlobalSecondaryIndexes = make(
+		[]SecondaryIndex,
+		len(sc.GlobalSecondaryIndexes),
+	)
+	copy(table.GlobalSecondaryIndexes, sc.GlobalSecondaryIndexes)
+
+	// Add provisioned throughput for all global secondary indices
+	for i, idx := range table.GlobalSecondaryIndexes {
+		tp := throughput[idx.Name]
+		if tp == nil {
+			panic(fmt.Errorf(
+				"dynamini: no provisioned throughput for global index (%s)",
+				idx.Name,
+			))
+		}
+
+		table.GlobalSecondaryIndexes[i].Throughput = tp
+	}
+
+	return table
 }
