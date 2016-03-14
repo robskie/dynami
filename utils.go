@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	sc "github.com/robskie/dynamini/schema"
+
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
@@ -26,7 +28,8 @@ const (
 )
 
 type (
-	schema struct {
+	// Table schema
+	tschema struct {
 		// key's first element is
 		// always a hash attribute
 		key     []kelement
@@ -35,8 +38,8 @@ type (
 
 	kelement struct {
 		name     string
-		keyType  KeyType
-		attrType AttributeType
+		keyType  sc.KeyType
+		attrType sc.AttributeType
 	}
 
 	// Secondary index schema
@@ -63,15 +66,15 @@ type (
 
 type sregister struct {
 	mutex   *sync.RWMutex
-	schemas map[reflect.Type]*schema
+	schemas map[reflect.Type]*tschema
 }
 
 var sreg = sregister{
 	mutex:   &sync.RWMutex{},
-	schemas: map[reflect.Type]*schema{},
+	schemas: map[reflect.Type]*tschema{},
 }
 
-func getSchema(item interface{}) *schema {
+func getSchema(item interface{}) *tschema {
 	v := reflect.Indirect(reflect.ValueOf(item))
 
 	sreg.mutex.RLock()
@@ -93,7 +96,7 @@ func getSchema(item interface{}) *schema {
 				key[i] = kelement{name: k}
 			}
 
-			return &schema{key: key}
+			return &tschema{key: key}
 		}
 
 		// Process struct schema
@@ -125,10 +128,10 @@ func getSchema(item interface{}) *schema {
 				}
 
 				if keyTag == tagHashAttr {
-					elem.keyType = HashKey
+					elem.keyType = sc.HashKey
 					hashes[""] = elem
 				} else if keyTag == tagRangeAttr {
-					elem.keyType = RangeKey
+					elem.keyType = sc.RangeKey
 					ranges[""] = elem
 				} else {
 					panic("dynamini: invalid dbkey field tag")
@@ -151,14 +154,14 @@ func getSchema(item interface{}) *schema {
 					if parts[i] == tagHashAttr {
 						hashes[parts[i+1]] = &kelement{
 							name:     f.Name,
-							keyType:  HashKey,
+							keyType:  sc.HashKey,
 							attrType: getAttrType(f.Type),
 						}
 						projections[parts[i+1]][f.Name] = true
 					} else if parts[i] == tagRangeAttr {
 						ranges[parts[i+1]] = &kelement{
 							name:     f.Name,
-							keyType:  RangeKey,
+							keyType:  sc.RangeKey,
 							attrType: getAttrType(f.Type),
 						}
 						projections[parts[i+1]][f.Name] = true
@@ -222,7 +225,7 @@ func getSchema(item interface{}) *schema {
 			ischemas = append(ischemas, idxSchema)
 		}
 
-		s = &schema{pkey, ischemas}
+		s = &tschema{pkey, ischemas}
 
 		sreg.mutex.Lock()
 		sreg.schemas[v.Type()] = s
@@ -241,22 +244,22 @@ func mapToSlice(m map[string]bool) []string {
 	return res
 }
 
-func getAttrType(t reflect.Type) AttributeType {
+func getAttrType(t reflect.Type) sc.AttributeType {
 	switch t.Kind() {
 	case reflect.String:
-		return StringType
+		return sc.StringType
 	case reflect.Int, reflect.Int8, reflect.Int16,
 		reflect.Int32, reflect.Int64, reflect.Uint,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Float32, reflect.Float64:
 
-		return NumberType
+		return sc.NumberType
 	case reflect.Array, reflect.Slice:
 		et := t.Elem().Kind()
 		if et != reflect.Uint8 {
 			panic("dynamini: field must be a byte slice, number or string")
 		}
-		return StringType
+		return sc.StringType
 	default:
 		panic("dynamini: field must be a byte slice, number or string")
 	}

@@ -3,6 +3,8 @@ package dynamini
 import (
 	"sort"
 
+	sc "github.com/robskie/dynamini/schema"
+
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -21,39 +23,39 @@ func (suite *DatabaseTestSuite) TestNewTable() {
 		Projected int `dbindex:"project,GlobalIndex"`
 	}
 
-	table := NewTable("TestTable", tStruct{}, map[string]*Throughput{
-		"TestTable":   &Throughput{1, 2},
-		"GlobalIndex": &Throughput{3, 4},
+	table := NewTable("TestTable", tStruct{}, map[string]*sc.Throughput{
+		"TestTable":   &sc.Throughput{1, 2},
+		"GlobalIndex": &sc.Throughput{3, 4},
 	})
 
 	assert.Equal("TestTable", table.Name)
-	assert.Equal(&Throughput{1, 2}, table.Throughput)
+	assert.Equal(&sc.Throughput{1, 2}, table.Throughput)
 
-	expectedKeySchema := []KeySchema{
-		{"Hash", HashKey},
-		{"Range", RangeKey},
+	expectedKeySchema := []sc.KeySchema{
+		{"Hash", sc.HashKey},
+		{"Range", sc.RangeKey},
 	}
 	assert.Equal(expectedKeySchema, table.KeySchema)
 
-	expectedAttrs := []AttributeDefinition{
-		{"Hash", StringType},
-		{"Range", NumberType},
-		{"AnotherRange", StringType},
-		{"GlobalHash", StringType},
+	expectedAttrs := []sc.AttributeDefinition{
+		{"Hash", sc.StringType},
+		{"Range", sc.NumberType},
+		{"AnotherRange", sc.StringType},
+		{"GlobalHash", sc.StringType},
 	}
 	for _, attr := range table.Attributes {
 		assert.Contains(expectedAttrs, attr)
 	}
 	assert.Len(table.Attributes, len(expectedAttrs))
 
-	expectedLocalIdx := SecondaryIndex{
+	expectedLocalIdx := sc.SecondaryIndex{
 		Name: "LocalIndex",
-		KeySchema: []KeySchema{
-			{"Hash", HashKey},
-			{"AnotherRange", RangeKey},
+		KeySchema: []sc.KeySchema{
+			{"Hash", sc.HashKey},
+			{"AnotherRange", sc.RangeKey},
 		},
-		Projection: &Projection{
-			Type: ProjectInclude,
+		Projection: &sc.Projection{
+			Type: sc.ProjectInclude,
 			Include: []string{
 				"AnotherRange",
 				"Hash",
@@ -65,13 +67,13 @@ func (suite *DatabaseTestSuite) TestNewTable() {
 	sort.Strings(table.LocalSecondaryIndexes[0].Projection.Include)
 	assert.Equal(expectedLocalIdx, table.LocalSecondaryIndexes[0])
 
-	expectedGlobalIdx := SecondaryIndex{
+	expectedGlobalIdx := sc.SecondaryIndex{
 		Name: "GlobalIndex",
-		KeySchema: []KeySchema{
-			{"GlobalHash", HashKey},
+		KeySchema: []sc.KeySchema{
+			{"GlobalHash", sc.HashKey},
 		},
-		Projection: &Projection{
-			Type: ProjectInclude,
+		Projection: &sc.Projection{
+			Type: sc.ProjectInclude,
 			Include: []string{
 				"GlobalHash",
 				"Hash",
@@ -79,7 +81,7 @@ func (suite *DatabaseTestSuite) TestNewTable() {
 				"Range",
 			},
 		},
-		Throughput: &Throughput{3, 4},
+		Throughput: &sc.Throughput{3, 4},
 	}
 	assert.Len(table.GlobalSecondaryIndexes, 1)
 	sort.Strings(table.GlobalSecondaryIndexes[0].Projection.Include)
@@ -89,40 +91,40 @@ func (suite *DatabaseTestSuite) TestNewTable() {
 func (suite *DatabaseTestSuite) TestCreateTable() {
 	assert := suite.Assert()
 
-	table := &Table{
+	table := &sc.Table{
 		Name:       "TestTable",
-		Throughput: &Throughput{1, 2},
-		Attributes: []AttributeDefinition{
-			{"Hash", StringType},
-			{"Range", NumberType},
-			{"AnotherRange", StringType},
-			{"GlobalHash", StringType},
+		Throughput: &sc.Throughput{1, 2},
+		Attributes: []sc.AttributeDefinition{
+			{"Hash", sc.StringType},
+			{"Range", sc.NumberType},
+			{"AnotherRange", sc.StringType},
+			{"GlobalHash", sc.StringType},
 		},
-		KeySchema: []KeySchema{
-			{"Hash", HashKey},
-			{"Range", RangeKey},
+		KeySchema: []sc.KeySchema{
+			{"Hash", sc.HashKey},
+			{"Range", sc.RangeKey},
 		},
-		LocalSecondaryIndexes: []SecondaryIndex{
+		LocalSecondaryIndexes: []sc.SecondaryIndex{
 			{
 				Name: "LocalIndex",
-				KeySchema: []KeySchema{
-					{"Hash", HashKey},
-					{"AnotherRange", RangeKey},
+				KeySchema: []sc.KeySchema{
+					{"Hash", sc.HashKey},
+					{"AnotherRange", sc.RangeKey},
 				},
-				Projection: &Projection{
-					Type: ProjectKeysOnly,
+				Projection: &sc.Projection{
+					Type: sc.ProjectKeysOnly,
 				},
 			},
 		},
-		GlobalSecondaryIndexes: []SecondaryIndex{
+		GlobalSecondaryIndexes: []sc.SecondaryIndex{
 			{
 				Name: "GlobalIndex",
-				KeySchema: []KeySchema{
-					{"GlobalHash", HashKey},
+				KeySchema: []sc.KeySchema{
+					{"GlobalHash", sc.HashKey},
 				},
-				Throughput: &Throughput{3, 4},
-				Projection: &Projection{
-					Type: ProjectInclude,
+				Throughput: &sc.Throughput{3, 4},
+				Projection: &sc.Projection{
+					Type: sc.ProjectInclude,
 					Include: []string{
 						"GlobalHash",
 						"Hash",

@@ -3,6 +3,8 @@ package dynamini
 import (
 	"sort"
 
+	sc "github.com/robskie/dynamini/schema"
+
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
@@ -56,13 +58,13 @@ func (suite *DatabaseTestSuite) TestFieldTags() {
 	expectedKey := []kelement{
 		{
 			name:     "Hash",
-			keyType:  HashKey,
-			attrType: StringType,
+			keyType:  sc.HashKey,
+			attrType: sc.StringType,
 		},
 		{
 			name:     "Range",
-			keyType:  RangeKey,
-			attrType: NumberType,
+			keyType:  sc.RangeKey,
+			attrType: sc.NumberType,
 		},
 	}
 
@@ -77,8 +79,8 @@ func (suite *DatabaseTestSuite) TestFieldTags() {
 				},
 				{
 					name:     "AnotherRange",
-					keyType:  RangeKey,
-					attrType: StringType,
+					keyType:  sc.RangeKey,
+					attrType: sc.StringType,
 				},
 			},
 			projections: []string{
@@ -93,8 +95,8 @@ func (suite *DatabaseTestSuite) TestFieldTags() {
 			key: []kelement{
 				{
 					name:     "GlobalHash",
-					keyType:  HashKey,
-					attrType: StringType,
+					keyType:  sc.HashKey,
+					attrType: sc.StringType,
 				},
 			},
 			projections: []string{
