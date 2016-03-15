@@ -273,3 +273,66 @@ func (suite *DatabaseTestSuite) TestBatchGetMultiTable() {
 	assert.Equal(randBooks, fetchedBooks)
 	assert.Equal(randQuotes, fetchedQuotes)
 }
+
+func (suite *DatabaseTestSuite) TestBatchGetBig() {
+	assert := suite.Assert()
+	require := suite.Require()
+
+	nitems := 150
+	itemSize := 300 << 10
+	bigText := randString(itemSize)
+
+	books := make([]tBook, nitems)
+	for i := range books {
+		books[i] = tBook{
+			Title:  randString(20),
+			Author: randString(15),
+			Genre:  randString(10),
+			Info: tInfo{
+				Publisher: bigText,
+			},
+		}
+	}
+
+	// Create write requests
+	wreqs := make([]*db.WriteRequest, nitems)
+	for i, b := range books {
+		dbitem, err := dbattribute.ConvertToMap(b)
+		require.Nil(err)
+
+		wreqs[i] = &db.WriteRequest{
+			PutRequest: &db.PutRequest{
+				Item: dbitem,
+			},
+		}
+	}
+
+	// Write items
+	nputsPerOp := 25
+	sdb := suite.db
+	unprocs := wreqs
+	for len(unprocs) > 0 {
+		_, err := sdb.BatchWriteItem(&db.BatchWriteItemInput{
+			RequestItems: map[string][]*db.WriteRequest{
+				"Book": unprocs[:min(nputsPerOp, len(unprocs))],
+			},
+		})
+		require.Nil(err)
+
+		unprocs = unprocs[min(nputsPerOp, len(unprocs)):]
+	}
+
+	fetchedBooks := make([]tBook, nitems)
+	for i, b := range books {
+		fetchedBooks[i] = tBook{
+			Title:  b.Title,
+			Author: b.Author,
+		}
+	}
+
+	c := suite.client
+	consistent := true
+	err := c.BatchGet("Book", fetchedBooks, consistent).Run()
+	assert.Nil(err)
+	assert.Equal(books, fetchedBooks)
+}
