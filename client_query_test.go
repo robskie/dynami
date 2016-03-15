@@ -1,6 +1,8 @@
 package dynamini
 
 import (
+	"strconv"
+
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -273,4 +275,71 @@ func (suite *DatabaseTestSuite) TestQuery() {
 		}
 		assert.Equal(len(tc.expected), nout)
 	}
+}
+
+func (suite *DatabaseTestSuite) TestQueryBig() {
+	itemSize := 1 << 10
+	nitems := (5 << 20) / itemSize
+
+	// Create write requests
+	require := suite.Require()
+	bigText := randString(itemSize)
+	wreqs := make([]*db.WriteRequest, nitems)
+	for i := range wreqs {
+		q := tQuote{
+			Author: bigText,
+			Text:   "sometext" + strconv.Itoa(i),
+		}
+
+		dbitem, err := dbattribute.ConvertToMap(q)
+		require.Nil(err)
+
+		wreqs[i] = &db.WriteRequest{
+			PutRequest: &db.PutRequest{
+				Item: dbitem,
+			},
+		}
+	}
+
+	// Write items
+	nputsPerOp := 25
+	sdb := suite.db
+	unprocs := wreqs
+	for len(unprocs) > 0 {
+		_, err := sdb.BatchWriteItem(&db.BatchWriteItemInput{
+			RequestItems: map[string][]*db.WriteRequest{
+				"Quote": unprocs[:min(nputsPerOp, len(unprocs))],
+			},
+		})
+		require.Nil(err)
+		unprocs = unprocs[min(nputsPerOp, len(unprocs)):]
+	}
+
+	// Test query
+	c := suite.client
+
+	it := c.Query("Quote").
+		HashFilter("Author", bigText).
+		Consistent().
+		Run()
+
+	nres := 0
+	assert := suite.Assert()
+	for it.HasNext() {
+		it.Next(nil)
+		nres++
+	}
+	assert.Equal(nitems, nres)
+
+	// Test scan
+	it = c.Query("Quote").
+		Consistent().
+		Run()
+
+	nres = 0
+	for it.HasNext() {
+		it.Next(nil)
+		nres++
+	}
+	assert.Equal(nitems, nres)
 }

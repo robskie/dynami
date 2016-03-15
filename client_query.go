@@ -67,7 +67,7 @@ func (q *Query) Index(indexName string) *Query {
 func (q *Query) Limit(limit int) *Query {
 	if q.err != nil {
 		return q
-	} else if limit < 0 {
+	} else if limit <= 0 {
 		q.err = fmt.Errorf("dynamini: limit must be greater than zero")
 		return q
 	}
@@ -275,7 +275,7 @@ func (it *Iterator) HasNext() bool {
 		return true
 	}
 
-	if it.index < it.limit && len(it.lastKey) > 0 {
+	if len(it.lastKey) > 0 && (it.limit == -1 || it.index < it.limit) {
 		var lastKey map[string]*db.AttributeValue
 		var outpItems []map[string]*db.AttributeValue
 
