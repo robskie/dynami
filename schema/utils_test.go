@@ -10,13 +10,13 @@ import (
 
 func TestFieldTags(t *testing.T) {
 	type tStruct struct {
-		Hash  string `dbkey:"hash"`
+		Hash  string `dbkey:"hash" dbindex:"hash,GlobalIndexA"`
 		Range int    `dbkey:"range"`
 
-		AnotherRange string `dbindex:"range,SecondaryIndex"`
-		GlobalHash   string `dbindex:"hash,GlobalIndex"`
+		AnotherRange string `dbindex:"range,LocalIndex"`
+		GlobalHash   string `dbindex:"hash,GlobalIndexB"`
 
-		Projected int `dbindex:"project,GlobalIndex"`
+		Projected int `dbindex:"project,GlobalIndexA,project,GlobalIndexB"`
 	}
 
 	s := GetSchema(tStruct{})
@@ -40,7 +40,7 @@ func TestFieldTags(t *testing.T) {
 
 	expectedLocalIdx := []SecondaryIndex{
 		{
-			Name: "SecondaryIndex",
+			Name: "LocalIndex",
 			Key: []Key{
 				{"Hash", HashKey},
 				{"AnotherRange", RangeKey},
@@ -60,9 +60,23 @@ func TestFieldTags(t *testing.T) {
 	sort.Strings(s.LocalSecondaryIndexes[0].Projection.Include)
 	assert.Equal(t, expectedLocalIdx, s.LocalSecondaryIndexes)
 
-	expectedGlobalIdx := []SecondaryIndex{
+	expectedGlobalIdxs := []SecondaryIndex{
 		{
-			Name: "GlobalIndex",
+			Name: "GlobalIndexA",
+			Key: []Key{
+				{"Hash", HashKey},
+			},
+			Projection: &Projection{
+				Type: ProjectInclude,
+				Include: []string{
+					"Hash",
+					"Projected",
+					"Range",
+				},
+			},
+		},
+		{
+			Name: "GlobalIndexB",
 			Key: []Key{
 				{"GlobalHash", HashKey},
 			},
@@ -77,8 +91,10 @@ func TestFieldTags(t *testing.T) {
 			},
 		},
 	}
-	require.Len(t, s.GlobalSecondaryIndexes, 1)
-	require.NotNil(t, s.GlobalSecondaryIndexes[0].Projection)
-	sort.Strings(s.GlobalSecondaryIndexes[0].Projection.Include)
-	assert.Equal(t, expectedGlobalIdx, s.GlobalSecondaryIndexes)
+	require.Len(t, s.GlobalSecondaryIndexes, 2)
+	for _, actualIdx := range s.GlobalSecondaryIndexes {
+		require.NotNil(t, actualIdx.Projection)
+		sort.Strings(actualIdx.Projection.Include)
+		assert.Contains(t, expectedGlobalIdxs, actualIdx)
+	}
 }

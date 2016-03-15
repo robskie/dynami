@@ -51,6 +51,8 @@ Example code:
     G string `json:",omitempty"`
   }
 
+Note that for local secondary indices, only the range attribute is tagged as
+shown in struct field C.
 
 Item Operations
 

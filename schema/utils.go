@@ -114,7 +114,7 @@ func GetSchema(item interface{}) *Table {
 						}
 						hashes[parts[i+1]] = &Key{
 							Name: f.Name,
-							Type:       HashKey,
+							Type: HashKey,
 						}
 						proj[f.Name] = true
 					} else if parts[i] == tagRangeAttr {
@@ -124,7 +124,7 @@ func GetSchema(item interface{}) *Table {
 						}
 						ranges[parts[i+1]] = &Key{
 							Name: f.Name,
-							Type:       RangeKey,
+							Type: RangeKey,
 						}
 						proj[f.Name] = true
 					} else if parts[i] == tagProjectedAttr {
@@ -159,6 +159,7 @@ func GetSchema(item interface{}) *Table {
 		localIdxs := []SecondaryIndex{}
 		globalIdxs := []SecondaryIndex{}
 		for idx := range indices {
+			isLocalIdx := false
 			sidx := SecondaryIndex{Name: idx}
 
 			// Add projection
@@ -175,6 +176,7 @@ func GetSchema(item interface{}) *Table {
 				// hash key. This is the case for local
 				// secondary indices.
 				hk = hashes[""]
+				isLocalIdx = true
 			}
 			sidx.Key = append(sidx.Key, *hk)
 
@@ -183,8 +185,8 @@ func GetSchema(item interface{}) *Table {
 				sidx.Key = append(sidx.Key, *rk)
 			}
 
-			// Determine if global or local secondary index
-			if hk.Name == pkhash.Name {
+			// Add to global or local secondary index
+			if isLocalIdx {
 				localIdxs = append(localIdxs, sidx)
 			} else {
 				globalIdxs = append(globalIdxs, sidx)
@@ -198,8 +200,8 @@ func GetSchema(item interface{}) *Table {
 		}
 
 		s = &Table{
-			Attributes:             attributes,
-			Key:              pkey,
+			Attributes: attributes,
+			Key:        pkey,
 			LocalSecondaryIndexes:  localIdxs,
 			GlobalSecondaryIndexes: globalIdxs,
 		}
