@@ -165,6 +165,101 @@ func (t *Table) CreationDate() time.Time {
 	return t.PCreationDate
 }
 
+// AddAttributes appends the given attributes to the table's
+// attributes. If an attribute with the same name is already
+// present in the table, then it will be replaced by the given
+// attribute.
+func (t *Table) AddAttributes(attributes []Attribute) {
+	attr := map[string]Attribute{}
+	for _, a := range t.Attributes {
+		attr[a.Name] = a
+	}
+
+	for _, a := range attributes {
+		attr[a.Name] = a
+	}
+
+	t.Attributes = make([]Attribute, 0, len(attr))
+	for _, a := range attr {
+		t.Attributes = append(t.Attributes, a)
+	}
+}
+
+// AddLocalSecondaryIndex adds a new local secondary index to
+// the table. This will replace any index with the same name.
+func (t *Table) AddLocalSecondaryIndex(index *SecondaryIndex) {
+	for i, idx := range t.LocalSecondaryIndexes {
+		if idx.Name == index.Name {
+			t.LocalSecondaryIndexes[i] = *index
+			return
+		}
+	}
+
+	t.LocalSecondaryIndexes = append(t.LocalSecondaryIndexes, *index)
+}
+
+// GetLocalSecondaryIndex returns a pointer to the index with the given name.
+func (t *Table) GetLocalSecondaryIndex(indexName string) *SecondaryIndex {
+	for _, idx := range t.LocalSecondaryIndexes {
+		if idx.Name == indexName {
+			return &idx
+		}
+	}
+
+	return nil
+}
+
+// RemoveLocalSecondaryIndex removes a local secondary index
+// with the given name from the table.
+func (t *Table) RemoveLocalSecondaryIndex(indexName string) {
+	localIdxs := t.LocalSecondaryIndexes[:0]
+	for _, idx := range t.LocalSecondaryIndexes {
+		if idx.Name != indexName {
+			localIdxs = append(localIdxs, idx)
+		}
+	}
+
+	t.LocalSecondaryIndexes = localIdxs
+}
+
+// AddGlobalSecondaryIndex adds a global secondary index to the
+// table. If an index with the same name is already present, then
+// it will be replaced by the given index.
+func (t *Table) AddGlobalSecondaryIndex(index *SecondaryIndex) {
+	for i, idx := range t.GlobalSecondaryIndexes {
+		if idx.Name == index.Name {
+			t.GlobalSecondaryIndexes[i] = *index
+			return
+		}
+	}
+
+	t.GlobalSecondaryIndexes = append(t.GlobalSecondaryIndexes, *index)
+}
+
+// GetGlobalSecondaryIndex returns the index with the given name.
+func (t *Table) GetGlobalSecondaryIndex(indexName string) *SecondaryIndex {
+	for _, idx := range t.GlobalSecondaryIndexes {
+		if idx.Name == indexName {
+			return &idx
+		}
+	}
+
+	return nil
+}
+
+// RemoveGlobalSecondaryIndex removes the index with the
+// given name from the table.
+func (t *Table) RemoveGlobalSecondaryIndex(indexName string) {
+	globalIdxs := t.GlobalSecondaryIndexes[:0]
+	for _, idx := range t.GlobalSecondaryIndexes {
+		if idx.Name != indexName {
+			globalIdxs = append(globalIdxs, idx)
+		}
+	}
+
+	t.GlobalSecondaryIndexes = globalIdxs
+}
+
 // NewTable returns a new table from an item. item must be
 // a struct or a pointer to struct with properly tagged fields.
 // throughput should contain the provisioned throughput for the
