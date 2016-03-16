@@ -5,6 +5,29 @@ import (
 	"github.com/robskie/dynamini/schema"
 )
 
+func ExampleClient_Get(client *dynamini.Client) {
+	type TestItem struct {
+		Hash       string `dbkey:"hash"`
+		Range      string `dbkey:"range"`
+		GlobalHash string `dbindex:"hash,GlobalIndex"`
+
+		Value int `dbindex:"project,GlobalIndex"`
+	}
+
+	// Fetch using primary key
+	itemA := TestItem{
+		Hash:  "somehash",
+		Range: "somerange",
+	}
+	client.Get("TestTable", &itemA)
+
+	// Fetch using secondary index key
+	itemB := TestItem{
+		GlobalHash: "anotherhash",
+	}
+	client.Get("TestTable", &itemB)
+}
+
 func ExampleClient_UpdateTable(client *dynamini.Client) {
 	// Get table schema
 	table, _ := client.DescribeTable("TestTable")
