@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	sc "github.com/robskie/dynamini/schema"
+	sc "github.com/robskie/dynami/schema"
 
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -19,7 +19,7 @@ import (
 type BatchError map[string]map[int]error
 
 func (e BatchError) Error() string {
-	return "dynamini: an error occurred in one of the items"
+	return "dynami: an error occurred in one of the items"
 }
 
 // ikey contains the table and the key
@@ -119,7 +119,7 @@ func (b *batchOp) addItems(
 
 	v := reflect.ValueOf(items)
 	if v.Kind() != reflect.Slice {
-		panic("dynamini: items must be a slice")
+		panic("dynami: items must be a slice")
 	}
 
 	if v.Len() == 0 {
@@ -150,7 +150,7 @@ func (b *batchOp) addItems(
 		if len(keysOnly) == 0 || keysOnly[0] == false {
 			dbitem, err = dbattribute.ConvertToMap(item)
 			if err != nil {
-				err = fmt.Errorf("dynamini: invalid item (%v)", err)
+				err = fmt.Errorf("dynami: invalid item (%v)", err)
 				b.errs[ekey{tableName, i}] = err
 				continue
 			}

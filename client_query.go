@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"errors"
@@ -40,7 +40,7 @@ type Query struct {
 func (c *Client) Query(tableName string) *Query {
 	if tableName == "" {
 		return &Query{
-			err: fmt.Errorf("dynamini: empty table name"),
+			err: fmt.Errorf("dynami: empty table name"),
 		}
 	}
 
@@ -68,7 +68,7 @@ func (q *Query) Limit(limit int) *Query {
 	if q.err != nil {
 		return q
 	} else if limit <= 0 {
-		q.err = fmt.Errorf("dynamini: limit must be greater than zero")
+		q.err = fmt.Errorf("dynami: limit must be greater than zero")
 		return q
 	}
 
@@ -121,7 +121,7 @@ func (q *Query) HashFilter(name string, value interface{}) *Query {
 
 		attr, err := dbattribute.ConvertTo(value)
 		if err != nil {
-			q.err = fmt.Errorf("dynamini: hash filter value is invalid (%v)", err)
+			q.err = fmt.Errorf("dynami: hash filter value is invalid (%v)", err)
 			return q
 		}
 		q.addAttributeValue(":hv", attr)
@@ -312,13 +312,13 @@ func (it *Iterator) HasNext() bool {
 // pointer to map[string]interface{} or a pointer to struct.
 func (it *Iterator) Next(item interface{}) error {
 	if !it.HasNext() {
-		return fmt.Errorf("dynamini: no more items to return")
+		return fmt.Errorf("dynami: no more items to return")
 	}
 
 	if item != nil {
 		err := dbattribute.ConvertFromMap(it.items[it.index], item)
 		if err != nil {
-			return fmt.Errorf("dynamini: invalid item (%v)", err)
+			return fmt.Errorf("dynami: invalid item (%v)", err)
 		}
 	}
 
@@ -361,7 +361,7 @@ var (
 	reBeginsWith = regexp.MustCompile(`begins_with\((.+),\s(.+)\)`)
 )
 
-var errNoMatch = errors.New("dynamini: no matches found")
+var errNoMatch = errors.New("dynami: no matches found")
 
 var exprParser = []func(string) (string, []string, error){
 	parseCompExpr,
@@ -400,13 +400,13 @@ func parseExpression(expr string, values []interface{}) (*exprValue, error) {
 			}
 
 			if err != nil {
-				return nil, fmt.Errorf("dynamini: invalid expression")
+				return nil, fmt.Errorf("dynami: invalid expression")
 			}
 
 			// Check for duplicate value placeholders
 			for _, ph := range valuePlaceholder {
 				if _, ok := vphs[ph]; ok {
-					return nil, fmt.Errorf("dynamini: duplicate placeholder (%v)", ph)
+					return nil, fmt.Errorf("dynami: duplicate placeholder (%v)", ph)
 				}
 				vphs[ph] = true
 			}
@@ -438,7 +438,7 @@ func parseExpression(expr string, values []interface{}) (*exprValue, error) {
 func parseFuncExpr(expr string) (string, []string, error) {
 	if m := reFunc.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 3 {
-			return "", nil, fmt.Errorf("dynamini: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
 		}
 
 		attrName := ""
@@ -452,14 +452,14 @@ func parseFuncExpr(expr string) (string, []string, error) {
 		case "attribute_type", "begins_with", "contains":
 			parts := splitCSV(trimRightP(m[2]))
 			if len(parts) != 2 {
-				err := fmt.Errorf("dynamini: invalid func expression (%s)", funcName)
+				err := fmt.Errorf("dynami: invalid func expression (%s)", funcName)
 				return "", nil, err
 			}
 
 			attrName = parts[0]
 			vph = parts[1:]
 		default:
-			err := fmt.Errorf("dynamini: unknown func expression (%s)", funcName)
+			err := fmt.Errorf("dynami: unknown func expression (%s)", funcName)
 			return "", nil, err
 		}
 
@@ -472,7 +472,7 @@ func parseFuncExpr(expr string) (string, []string, error) {
 func parseInExpr(expr string) (string, []string, error) {
 	if m := reIn.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 3 {
-			return "", nil, fmt.Errorf("dynamini: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
 		}
 
 		return trimLeftP(m[1]), splitCSV(trimRightP(m[2])), nil
@@ -484,7 +484,7 @@ func parseInExpr(expr string) (string, []string, error) {
 func parseBetweenExpr(expr string) (string, []string, error) {
 	if m := reBetween.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 4 {
-			return "", nil, fmt.Errorf("dynamini: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
 		}
 
 		return trimLeftP(m[1]), []string{m[2], trimRightP(m[3])}, nil
@@ -496,14 +496,14 @@ func parseBetweenExpr(expr string) (string, []string, error) {
 func parseCompExpr(expr string) (string, []string, error) {
 	if m := reComp.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 3 {
-			return "", nil, fmt.Errorf("dynamini: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
 		}
 
 		// Parse size function if present
 		attrName := trimLeftP(m[1])
 		if mf := reFunc.FindStringSubmatch(attrName); len(mf) > 0 {
 			if len(mf) != 3 || mf[1] != "size" {
-				return "", nil, fmt.Errorf("dynamini: invalid expression (%s)", expr)
+				return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
 			}
 			attrName = mf[2]
 		}
@@ -539,18 +539,18 @@ func parseExprAttrValue(
 	exprAttrValue []interface{}) ([]attrValue, error) {
 
 	if len(placeholder) > len(exprAttrValue) {
-		return nil, fmt.Errorf("dynamini: inadequate expression values")
+		return nil, fmt.Errorf("dynami: inadequate expression values")
 	}
 
 	attrs := make([]attrValue, len(placeholder))
 	for i, ph := range placeholder {
 		if ph[0] != ':' {
-			return nil, fmt.Errorf("dynamini: invalid value placeholder (%v)", ph)
+			return nil, fmt.Errorf("dynami: invalid value placeholder (%v)", ph)
 		}
 
 		attr, err := dbattribute.ConvertTo(exprAttrValue[i])
 		if err != nil {
-			return nil, fmt.Errorf("dynamini: invalid expression value (%v)", err)
+			return nil, fmt.Errorf("dynami: invalid expression value (%v)", err)
 		}
 
 		attrs[i] = attrValue{

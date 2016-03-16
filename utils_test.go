@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 

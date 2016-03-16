@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 var (
 	// ErrNoSuchItem is returned when no item is found for the given key.
-	ErrNoSuchItem = errors.New("dynamini: no such item")
+	ErrNoSuchItem = errors.New("dynami: no such item")
 )
 
 // Client represents a DynamoDB client.

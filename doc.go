@@ -1,5 +1,5 @@
 /*
-Package dynamini provides a simple wrapper over the official Go DynamoDB SDK.
+Package dynami provides a simple wrapper over the official Go DynamoDB SDK.
 
 In order to use this package effectively, an understanding of the underlying
 DynamoDB operations is recommended. For an introduction, please visit
@@ -68,7 +68,7 @@ Example code:
   }
 
   item := Item{"key", "somevalue"}
-  client := dynamini.NewClient("region", "id", "key")
+  client := dynami.NewClient("region", "id", "key")
   client.Put("ItemTable", item)
 
   // After some time...
@@ -111,7 +111,7 @@ Example code:
   }
 
   // Add items
-  client := dynamini.NewClient("region", "id", "key")
+  client := dynami.NewClient("region", "id", "key")
   client.BatchPut("ItemTableA", itemsA).
     Put("ItemTableB", itemsB).
     Run()
@@ -166,7 +166,7 @@ Example code:
     Value int
   }
 
-  client := dynamini.NewClient("region", "id", "key")
+  client := dynami.NewClient("region", "id", "key")
   it := client.Query("ItemTable").
     HashFilter("Hash", "somehashvalue").
     RangeFilter("Range BETWEEN :rval1 AND :rval2", 1, 10).
@@ -182,4 +182,4 @@ Example code:
   }
 
 */
-package dynamini // import "github.com/robskie/dynamini"
+package dynami // import "github.com/robskie/dynami"

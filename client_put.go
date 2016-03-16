@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func (c *Client) Put(tableName string, item interface{}) error {
 	item = reflect.Indirect(reflect.ValueOf(item)).Interface()
 	mitem, err := dbattribute.ConvertToMap(item)
 	if err != nil {
-		return fmt.Errorf("dynamini: invalid item (%v)", err)
+		return fmt.Errorf("dynami: invalid item (%v)", err)
 	}
 	mitem = removeEmptyAttr(mitem)
 
@@ -32,7 +32,7 @@ func (c *Client) Put(tableName string, item interface{}) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("dynamini: cannot put item (%v)", err)
+		return fmt.Errorf("dynami: cannot put item (%v)", err)
 	}
 
 	return nil
@@ -76,7 +76,7 @@ func (b *BatchPut) Put(tableName string, items interface{}) *BatchPut {
 	if b.err != nil {
 		return b
 	} else if b.tables[tableName] {
-		b.err = fmt.Errorf("dynamini: only one BatchPut operation per table is allowed")
+		b.err = fmt.Errorf("dynami: only one BatchPut operation per table is allowed")
 		return b
 	} else if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
@@ -121,7 +121,7 @@ func (b *BatchPut) Run() error {
 		resp, err := b.db.BatchWriteItem(input)
 
 		if err != nil {
-			return fmt.Errorf("dynamini: BatchPut failed (%v)", err)
+			return fmt.Errorf("dynami: BatchPut failed (%v)", err)
 		}
 
 		unproc := op.unwrap(resp.UnprocessedItems)

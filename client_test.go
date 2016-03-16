@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"log"

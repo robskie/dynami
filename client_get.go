@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ func (c *Client) Get(
 		})
 
 		if err != nil {
-			return fmt.Errorf("dynamini: cannot get item (%v)", err)
+			return fmt.Errorf("dynami: cannot get item (%v)", err)
 		}
 		if len(resp.Item) == 0 {
 			return ErrNoSuchItem
@@ -52,7 +52,7 @@ func (c *Client) Get(
 
 		err = dbattribute.ConvertFromMap(resp.Item, item)
 		if err != nil {
-			return fmt.Errorf("dynamini: cannot get item (%v)", err)
+			return fmt.Errorf("dynami: cannot get item (%v)", err)
 		}
 
 		return nil
@@ -90,7 +90,7 @@ func (c *Client) Get(
 
 	resp, err := cdb.Query(queryInput)
 	if err != nil {
-		return fmt.Errorf("dynamini: cannot get item (%v)", err)
+		return fmt.Errorf("dynami: cannot get item (%v)", err)
 	}
 	if len(resp.Items) == 0 {
 		return ErrNoSuchItem
@@ -98,7 +98,7 @@ func (c *Client) Get(
 
 	err = dbattribute.ConvertFromMap(resp.Items[0], item)
 	if err != nil {
-		return fmt.Errorf("dynamini: invalid item (%v)", err)
+		return fmt.Errorf("dynami: invalid item (%v)", err)
 	}
 
 	return nil
@@ -155,7 +155,7 @@ func (b *BatchGet) Get(
 	if b.err != nil {
 		return b
 	} else if _, ok := b.items[tableName]; ok {
-		b.err = fmt.Errorf("dynamini: only one BatchGet operation per table is allowed")
+		b.err = fmt.Errorf("dynami: only one BatchGet operation per table is allowed")
 		return b
 	} else if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
@@ -207,7 +207,7 @@ func (b *BatchGet) Run() error {
 		resp, err := b.db.BatchGetItem(input)
 
 		if err != nil {
-			return fmt.Errorf("dynamini: BatchGet failed (%v)", err)
+			return fmt.Errorf("dynami: BatchGet failed (%v)", err)
 		}
 
 		proc := op.unwrap(resp.Responses)

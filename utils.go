@@ -1,11 +1,11 @@
-package dynamini
+package dynami
 
 import (
 	"fmt"
 	"math/rand"
 	"reflect"
 
-	sc "github.com/robskie/dynamini/schema"
+	sc "github.com/robskie/dynami/schema"
 
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -51,7 +51,7 @@ func getPrimaryKey(item interface{}) (*dbkey, error) {
 
 	kv, err := dbattribute.ConvertToMap(item)
 	if err != nil {
-		return nil, fmt.Errorf("dynamini: invalid item (%v)", err)
+		return nil, fmt.Errorf("dynami: invalid item (%v)", err)
 	}
 
 	schema := sc.GetSchema(item)
@@ -59,13 +59,13 @@ func getPrimaryKey(item interface{}) (*dbkey, error) {
 	for _, k := range schema.Key {
 		v := valueByName(val, k.Name)
 		if isZeroValue(v) {
-			return nil, fmt.Errorf("dynamini: incomplete primary key")
+			return nil, fmt.Errorf("dynami: incomplete primary key")
 		}
 		key.value[k.Name] = kv[k.Name]
 	}
 
 	if len(key.value) == 0 {
-		return nil, fmt.Errorf("dynamini: no valid key")
+		return nil, fmt.Errorf("dynami: no valid key")
 	}
 
 	return key, nil
@@ -77,7 +77,7 @@ func getSecondaryKey(item interface{}) (*dbkey, error) {
 
 	kv, err := dbattribute.ConvertToMap(item)
 	if err != nil {
-		return nil, fmt.Errorf("dynamini: invalid item (%v)", err)
+		return nil, fmt.Errorf("dynami: invalid item (%v)", err)
 	}
 
 	key := &dbkey{value: dbitem{}}
@@ -111,7 +111,7 @@ Indices:
 	}
 
 	if len(key.value) == 0 {
-		return nil, fmt.Errorf("dynamini: no valid key")
+		return nil, fmt.Errorf("dynami: no valid key")
 	}
 
 	return key, nil
@@ -154,7 +154,7 @@ func toPtr(v interface{}) interface{} {
 		}
 		return ret.Interface()
 	default:
-		panic("dynamini: cannot convert type to pointer")
+		panic("dynami: cannot convert type to pointer")
 	}
 }
 
@@ -191,13 +191,13 @@ func checkType(item interface{}, types ...interface{}) error {
 		}
 	}
 
-	return fmt.Errorf("dynamini: invalid type (%v)", t)
+	return fmt.Errorf("dynami: invalid type (%v)", t)
 }
 
 func checkPtrType(item interface{}, types ...interface{}) error {
 	t := reflect.TypeOf(item)
 	if t.Kind() != reflect.Ptr {
-		return fmt.Errorf("dynamini: invalid type (%v)", t)
+		return fmt.Errorf("dynami: invalid type (%v)", t)
 	}
 
 	t = t.Elem()
@@ -214,13 +214,13 @@ func checkPtrType(item interface{}, types ...interface{}) error {
 		}
 	}
 
-	return fmt.Errorf("dynamini: invalid type (%v)", reflect.TypeOf(item))
+	return fmt.Errorf("dynami: invalid type (%v)", reflect.TypeOf(item))
 }
 
 func checkSliceType(item interface{}, types ...interface{}) error {
 	t := reflect.TypeOf(item)
 	if t.Kind() != reflect.Slice {
-		return fmt.Errorf("dynamini: invalid type (%v)", t)
+		return fmt.Errorf("dynami: invalid type (%v)", t)
 	}
 
 	t = t.Elem()
@@ -241,7 +241,7 @@ func checkSliceType(item interface{}, types ...interface{}) error {
 		}
 	}
 
-	return fmt.Errorf("dynamini: invalid type (%v)", reflect.TypeOf(item))
+	return fmt.Errorf("dynami: invalid type (%v)", reflect.TypeOf(item))
 }
 
 func max(a, b int) int {

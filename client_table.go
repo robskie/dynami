@@ -1,10 +1,10 @@
-package dynamini
+package dynami
 
 import (
 	"fmt"
 	"reflect"
 
-	"github.com/robskie/dynamini/schema"
+	"github.com/robskie/dynami/schema"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/private/waiter"
@@ -28,14 +28,14 @@ func (c *Client) CreateTable(table *schema.Table) error {
 	cdb := c.db
 	_, err := cdb.CreateTable(input)
 	if err != nil {
-		return fmt.Errorf("dynamini: cannot create table (%v)", err)
+		return fmt.Errorf("dynami: cannot create table (%v)", err)
 	}
 
 	err = cdb.WaitUntilTableExists(&db.DescribeTableInput{
 		TableName: aws.String(table.Name),
 	})
 	if err != nil {
-		return fmt.Errorf("dynamini: failed waiting for table creation (%v)", err)
+		return fmt.Errorf("dynami: failed waiting for table creation (%v)", err)
 	}
 	return err
 }
@@ -47,7 +47,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 	// Get unmodified table schema
 	origt, err := c.DescribeTable(table.Name)
 	if err != nil {
-		return fmt.Errorf("dynamini: cannot update table (%v)", err)
+		return fmt.Errorf("dynami: cannot update table (%v)", err)
 	}
 
 	// Update table's provisioned throughput
@@ -60,7 +60,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			ProvisionedThroughput: dbProvisionedThroughput(tp),
 		})
 		if err != nil {
-			return fmt.Errorf("dynamini: cannot update table (%v)", err)
+			return fmt.Errorf("dynami: cannot update table (%v)", err)
 		}
 	}
 
@@ -98,7 +98,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			for _, k := range idx.Key {
 				attr, ok := attrs[k.Name]
 				if !ok {
-					return fmt.Errorf("dynamini: missing attribute definition")
+					return fmt.Errorf("dynami: missing attribute definition")
 				}
 
 				attrDefs = append(attrDefs, &db.AttributeDefinition{
@@ -117,7 +117,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("dynamini: cannot create global secondary index (%v)", err)
+				return fmt.Errorf("dynami: cannot create global secondary index (%v)", err)
 			}
 		} else { // Update GSI
 			updateAction := &db.UpdateGlobalSecondaryIndexAction{
@@ -147,7 +147,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("dynamini: cannot delete global secondary index (%v)", err)
+				return fmt.Errorf("dynami: cannot delete global secondary index (%v)", err)
 			}
 		}
 	}
@@ -159,7 +159,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			GlobalSecondaryIndexUpdates: gsiUpdateActs,
 		})
 		if err != nil {
-			return fmt.Errorf("dynamini: cannot update global secondary index (%v)", err)
+			return fmt.Errorf("dynami: cannot update global secondary index (%v)", err)
 		}
 	}
 
@@ -168,13 +168,13 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		TableName: aws.String(table.Name),
 	})
 	if err != nil {
-		return fmt.Errorf("dynamini: failed waiting for successful table update (%v)", err)
+		return fmt.Errorf("dynami: failed waiting for successful table update (%v)", err)
 	}
 
 	// Wait until all gsi's are active
 	err = waitUntilIndicesActive(cdb, table.Name)
 	if err != nil {
-		return fmt.Errorf("dynamini: failed waiting for successful index update (%v)", err)
+		return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
 	}
 
 	return nil
@@ -189,7 +189,7 @@ func (c *Client) DescribeTable(tableName string) (*schema.Table, error) {
 		TableName: aws.String(tableName),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("dynamini: cannot describe table (%v)", err)
+		return nil, fmt.Errorf("dynami: cannot describe table (%v)", err)
 	}
 
 	desc := resp.Table
@@ -218,7 +218,7 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 		TableName: aws.String(tableName),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("dynamini: cannot delete table (%v)", err)
+		return nil, fmt.Errorf("dynami: cannot delete table (%v)", err)
 	}
 
 	desc := resp.TableDescription
@@ -240,7 +240,7 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 		TableName: aws.String(tableName),
 	})
 	if err != nil {
-		return table, fmt.Errorf("dynamini: failed waiting for table deletion (%v)", err)
+		return table, fmt.Errorf("dynami: failed waiting for table deletion (%v)", err)
 	}
 	return table, nil
 }
@@ -250,7 +250,7 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 func (c *Client) ClearTable(tableName string) error {
 	desc, err := c.DescribeTable(tableName)
 	if err != nil {
-		return fmt.Errorf("dynamini: cannot clear table")
+		return fmt.Errorf("dynami: cannot clear table")
 	}
 
 	const keysPerBatch = 25
@@ -270,7 +270,7 @@ func (c *Client) ClearTable(tableName string) error {
 		if len(keys) == keysPerBatch {
 			err = c.BatchDelete(tableName, keys).Run()
 			if err != nil {
-				return fmt.Errorf("dynamini: cannot clear table (%v)", err)
+				return fmt.Errorf("dynami: cannot clear table (%v)", err)
 			}
 			keys = keys[0:]
 		}
@@ -279,7 +279,7 @@ func (c *Client) ClearTable(tableName string) error {
 	if len(keys) > 0 {
 		err = c.BatchDelete(tableName, keys).Run()
 		if err != nil {
-			return fmt.Errorf("dynamini: cannot clear table (%v)", err)
+			return fmt.Errorf("dynami: cannot clear table (%v)", err)
 		}
 	}
 

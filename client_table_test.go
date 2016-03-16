@@ -1,7 +1,7 @@
-package dynamini
+package dynami
 
 import (
-	sc "github.com/robskie/dynamini/schema"
+	sc "github.com/robskie/dynami/schema"
 
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"

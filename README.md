@@ -1,6 +1,6 @@
-# Dynamini
+# Dynami
 
-Dynamini provides a simple wrapper over the official [Go DynamoDB SDK][1].
+Dynami provides a simple wrapper over the official [Go DynamoDB SDK][1].
 
 In order to use this package effectively, an understanding of the underlying
 DynamoDB operations is recommended. For an introduction, click [here][2].
@@ -12,7 +12,7 @@ DynamoDB operations is recommended. For an introduction, click [here][2].
 
 ## Installation
 ```sh
-go get github.com/robskie/dynamini
+go get github.com/robskie/dynami
 ```
 
 ## Examples
@@ -26,7 +26,7 @@ type Item struct {
 }
 
 item := Item{"key", "somevalue"}
-client := dynamini.NewClient("region", "id", "key")
+client := dynami.NewClient("region", "id", "key")
 client.Put("ItemTable", item)
 
 // After some time...
@@ -48,7 +48,7 @@ type Item struct {
 	Value int
 }
 
-client := dynamini.NewClient("region", "id", "key")
+client := dynami.NewClient("region", "id", "key")
 it := client.Query("ItemTable").
 	HashFilter("Hash", "somehashvalue").
 	RangeFilter("Range BETWEEN :rval1 AND :rval2", 1, 10).
@@ -68,7 +68,7 @@ for it.HasNext() {
 
 Godoc documentation can be found [here][3].
 
-[3]: https://godoc.org/github.com/robskie/dynamini
+[3]: https://godoc.org/github.com/robskie/dynami
 
 ## Tests
 
@@ -83,5 +83,5 @@ tar -xzf dynamodb_local_latest.tar.gz -C DynamoDBLocal
 rm dynamodb_local_latest.tar.gz
 ```
 
-Now you can run the tests by typing `go test -v github.com/robskie/dynamini` in
+Now you can run the tests by typing `go test -v github.com/robskie/dynami` in
 terminal.

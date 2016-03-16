@@ -88,7 +88,7 @@ func GetSchema(item interface{}) *Table {
 					ks.Type = RangeKey
 					ranges[""] = ks
 				} else {
-					panic("dynamini: invalid dbkey field tag")
+					panic("dynami: invalid dbkey field tag")
 				}
 			}
 
@@ -96,7 +96,7 @@ func GetSchema(item interface{}) *Table {
 			if indexTag != "" {
 				parts := strings.Split(indexTag, ",")
 				if len(parts)&1 != 0 {
-					panic("dynamini: invalid dbindex field tag")
+					panic("dynami: invalid dbindex field tag")
 				}
 
 				for i := 0; i < len(parts); i += 2 {
@@ -130,7 +130,7 @@ func GetSchema(item interface{}) *Table {
 					} else if parts[i] == tagProjectedAttr {
 						proj[f.Name] = true
 					} else {
-						panic("dynamini: invalid dbindex field tag")
+						panic("dynami: invalid dbindex field tag")
 					}
 				}
 			}
@@ -140,7 +140,7 @@ func GetSchema(item interface{}) *Table {
 		pkey := []Key{}
 		pkhash, ok := hashes[""]
 		if !ok {
-			panic("dynamini: primary key is not tagged")
+			panic("dynami: primary key is not tagged")
 		}
 		pkey = append(pkey, *pkhash)
 		pkrange, ok := ranges[""]
@@ -228,10 +228,10 @@ func getAttrType(t reflect.Type) AttributeType {
 	case reflect.Array, reflect.Slice:
 		et := t.Elem().Kind()
 		if et != reflect.Uint8 {
-			panic("dynamini: field must be a byte slice, number or string")
+			panic("dynami: field must be a byte slice, number or string")
 		}
 		return StringType
 	default:
-		panic("dynamini: field must be a byte slice, number or string")
+		panic("dynami: field must be a byte slice, number or string")
 	}
 }

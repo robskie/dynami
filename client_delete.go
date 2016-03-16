@@ -1,4 +1,4 @@
-package dynamini
+package dynami
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ func (c *Client) Delete(tableName string, item interface{}) error {
 		TableName: aws.String(tableName),
 	})
 	if err != nil {
-		return fmt.Errorf("dynamini: cannot delete item (%v)", err)
+		return fmt.Errorf("dynami: cannot delete item (%v)", err)
 	}
 
 	return nil
@@ -70,7 +70,7 @@ func (b *BatchDelete) Delete(tableName string, items interface{}) *BatchDelete {
 	if b.err != nil {
 		return b
 	} else if b.tables[tableName] {
-		b.err = fmt.Errorf("dynamini: only one BatchDelete operation per table is allowed")
+		b.err = fmt.Errorf("dynami: only one BatchDelete operation per table is allowed")
 		return b
 	} else if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
@@ -116,7 +116,7 @@ func (b *BatchDelete) Run() error {
 		resp, err := b.db.BatchWriteItem(input)
 
 		if err != nil {
-			return fmt.Errorf("dynamini: BatchDelete failed (%v)", err)
+			return fmt.Errorf("dynami: BatchDelete failed (%v)", err)
 		}
 
 		unproc := op.unwrap(resp.UnprocessedItems)

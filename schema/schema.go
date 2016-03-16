@@ -270,9 +270,9 @@ func NewTable(
 	throughput map[string]*Throughput) *Table {
 
 	if tableName == "" {
-		panic("dynamini: table name must not be empty")
+		panic("dynami: table name must not be empty")
 	} else if throughput[tableName] == nil {
-		panic("dynamini: no provisioned throughput for table")
+		panic("dynami: no provisioned throughput for table")
 	}
 
 	table := &Table{
@@ -316,7 +316,7 @@ func NewTable(
 		tp := throughput[idx.Name]
 		if tp == nil {
 			panic(fmt.Errorf(
-				"dynamini: no provisioned throughput for global index (%s)",
+				"dynami: no provisioned throughput for global index (%s)",
 				idx.Name,
 			))
 		}

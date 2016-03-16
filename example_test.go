@@ -1,11 +1,11 @@
-package dynamini_test
+package dynami_test
 
 import (
-	"github.com/robskie/dynamini"
-	"github.com/robskie/dynamini/schema"
+	"github.com/robskie/dynami"
+	"github.com/robskie/dynami/schema"
 )
 
-func ExampleClient_Get(client *dynamini.Client) {
+func ExampleClient_Get(client *dynami.Client) {
 	type TestItem struct {
 		Hash       string `dbkey:"hash"`
 		Range      string `dbkey:"range"`
@@ -28,7 +28,7 @@ func ExampleClient_Get(client *dynamini.Client) {
 	client.Get("TestTable", &itemB)
 }
 
-func ExampleClient_CreateTable(client *dynamini.Client) {
+func ExampleClient_CreateTable(client *dynami.Client) {
 	type TestItem struct {
 		Hash       string `dbkey:"hash"`
 		Range      string `dbkey:"range"`
@@ -58,7 +58,7 @@ func ExampleClient_CreateTable(client *dynamini.Client) {
 	client.CreateTable(table)
 }
 
-func ExampleClient_UpdateTable(client *dynamini.Client) {
+func ExampleClient_UpdateTable(client *dynami.Client) {
 	// Get table schema
 	table, _ := client.DescribeTable("TestTable")
 
