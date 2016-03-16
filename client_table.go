@@ -7,6 +7,7 @@ import (
 	"github.com/robskie/dynamini/schema"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/private/waiter"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
@@ -39,6 +40,146 @@ func (c *Client) CreateTable(table *schema.Table) error {
 	return err
 }
 
+// UpdateTable modifies the table's throughput or global secondary
+// indices. It can create and delete global secondary indices or update
+// their throughputs. This method waits until all updates are finished.
+func (c *Client) UpdateTable(table *schema.Table) error {
+	// Get unmodified table schema
+	origt, err := c.DescribeTable(table.Name)
+	if err != nil {
+		return fmt.Errorf("dynamini: cannot update table (%v)", err)
+	}
+
+	// Update table's provisioned throughput
+	cdb := c.db
+	tp := table.Throughput
+	otp := origt.Throughput
+	if tp.Read != otp.Read || tp.Write != otp.Write {
+		_, err := cdb.UpdateTable(&db.UpdateTableInput{
+			TableName:             aws.String(table.Name),
+			ProvisionedThroughput: dbProvisionedThroughput(tp),
+		})
+		if err != nil {
+			return fmt.Errorf("dynamini: cannot update table (%v)", err)
+		}
+	}
+
+	// Create attribute map
+	attrs := map[string]schema.Attribute{}
+	for _, attr := range table.Attributes {
+		attrs[attr.Name] = attr
+	}
+
+	// Create global secondary index maps
+	gsi := map[string]schema.SecondaryIndex{}
+	ogsi := map[string]schema.SecondaryIndex{}
+	for _, idx := range table.GlobalSecondaryIndexes {
+		gsi[idx.Name] = idx
+	}
+	for _, idx := range origt.GlobalSecondaryIndexes {
+		ogsi[idx.Name] = idx
+	}
+
+	// Perform create and queue update actions
+	var gsiUpdateActs []*db.GlobalSecondaryIndexUpdate
+	for name, idx := range gsi {
+		_, ok := ogsi[name]
+
+		// Create GSI
+		if !ok {
+			createAction := &db.CreateGlobalSecondaryIndexAction{
+				IndexName:             aws.String(name),
+				ProvisionedThroughput: dbProvisionedThroughput(idx.Throughput),
+				Projection:            dbProjection(idx.Projection),
+				KeySchema:             dbKeySchema(idx.Key),
+			}
+
+			var attrDefs []*db.AttributeDefinition
+			for _, k := range idx.Key {
+				attr, ok := attrs[k.Name]
+				if !ok {
+					return fmt.Errorf("dynamini: missing attribute definition")
+				}
+
+				attrDefs = append(attrDefs, &db.AttributeDefinition{
+					AttributeName: aws.String(k.Name),
+					AttributeType: aws.String(string(attr.Type)),
+				})
+			}
+
+			_, err := cdb.UpdateTable(&db.UpdateTableInput{
+				TableName:            aws.String(table.Name),
+				AttributeDefinitions: attrDefs,
+				GlobalSecondaryIndexUpdates: []*db.GlobalSecondaryIndexUpdate{
+					{
+						Create: createAction,
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("dynamini: cannot create global secondary index (%v)", err)
+			}
+		} else { // Update GSI
+			updateAction := &db.UpdateGlobalSecondaryIndexAction{
+				IndexName:             aws.String(name),
+				ProvisionedThroughput: dbProvisionedThroughput(idx.Throughput),
+			}
+
+			gsiUpdateActs = append(gsiUpdateActs, &db.GlobalSecondaryIndexUpdate{
+				Update: updateAction,
+			})
+		}
+	}
+
+	// Perform delete actions
+	for name := range ogsi {
+		if _, ok := gsi[name]; !ok {
+			deleteAction := &db.DeleteGlobalSecondaryIndexAction{
+				IndexName: aws.String(name),
+			}
+
+			_, err := cdb.UpdateTable(&db.UpdateTableInput{
+				TableName: aws.String(table.Name),
+				GlobalSecondaryIndexUpdates: []*db.GlobalSecondaryIndexUpdate{
+					{
+						Delete: deleteAction,
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("dynamini: cannot delete global secondary index (%v)", err)
+			}
+		}
+	}
+
+	// Perform update actions
+	if len(gsiUpdateActs) > 0 {
+		_, err := cdb.UpdateTable(&db.UpdateTableInput{
+			TableName:                   aws.String(table.Name),
+			GlobalSecondaryIndexUpdates: gsiUpdateActs,
+		})
+		if err != nil {
+			return fmt.Errorf("dynamini: cannot update global secondary index (%v)", err)
+		}
+	}
+
+	// Wait until table is active
+	err = cdb.WaitUntilTableExists(&db.DescribeTableInput{
+		TableName: aws.String(table.Name),
+	})
+	if err != nil {
+		return fmt.Errorf("dynamini: failed waiting for successful table update (%v)", err)
+	}
+
+	// Wait until all gsi's are active
+	err = waitUntilIndicesActive(cdb, table.Name)
+	if err != nil {
+		return fmt.Errorf("dynamini: failed waiting for successful index update (%v)", err)
+	}
+
+	return nil
+}
+
 // DescribeTable provides additional information about the given table.
 // This includes the table's creation date, size in bytes, and the number
 // of items it contains.
@@ -53,10 +194,10 @@ func (c *Client) DescribeTable(tableName string) (*schema.Table, error) {
 
 	desc := resp.Table
 	table := &schema.Table{
-		Name:                   tableName,
-		Attributes:             attributeDefinitions(desc.AttributeDefinitions),
-		Throughput:             throughput(desc.ProvisionedThroughput),
-		Key:              keySchema(desc.KeySchema),
+		Name:       tableName,
+		Attributes: attributeDefinitions(desc.AttributeDefinitions),
+		Throughput: throughput(desc.ProvisionedThroughput),
+		Key:        keySchema(desc.KeySchema),
 		LocalSecondaryIndexes:  secondaryIndexes(desc.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: secondaryIndexes(desc.GlobalSecondaryIndexes),
 	}
@@ -82,10 +223,10 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 
 	desc := resp.TableDescription
 	table := &schema.Table{
-		Name:                   tableName,
-		Attributes:             attributeDefinitions(desc.AttributeDefinitions),
-		Throughput:             throughput(desc.ProvisionedThroughput),
-		Key:              keySchema(desc.KeySchema),
+		Name:       tableName,
+		Attributes: attributeDefinitions(desc.AttributeDefinitions),
+		Throughput: throughput(desc.ProvisionedThroughput),
+		Key:        keySchema(desc.KeySchema),
 		LocalSecondaryIndexes:  secondaryIndexes(desc.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: secondaryIndexes(desc.GlobalSecondaryIndexes),
 	}
@@ -267,7 +408,7 @@ func keySchema(dbKeySchema []*db.KeySchemaElement) []schema.Key {
 	for i, ke := range dbKeySchema {
 		keySchema[i] = schema.Key{
 			Name: *ke.AttributeName,
-			Type:       schema.KeyType(*ke.KeyType),
+			Type: schema.KeyType(*ke.KeyType),
 		}
 	}
 
@@ -309,7 +450,7 @@ func secondaryIndex(dbSecondaryIdx interface{}) schema.SecondaryIndex {
 	index := schema.SecondaryIndex{
 		Name:       vidxName.Elem().Interface().(string),
 		Projection: projection(vprojection.Interface().(*db.Projection)),
-		Key:  keySchema(vkeySchema.Interface().([]*db.KeySchemaElement)),
+		Key:        keySchema(vkeySchema.Interface().([]*db.KeySchemaElement)),
 	}
 
 	if vthroughput.Kind() != reflect.Invalid {
@@ -339,4 +480,29 @@ func secondaryIndexes(dbSecondaryIdxs interface{}) []schema.SecondaryIndex {
 	}
 
 	return idxs
+}
+
+func waitUntilIndicesActive(c *db.DynamoDB, tableName string) error {
+	waiterCfg := waiter.Config{
+		Operation:   "DescribeTable",
+		Delay:       20,
+		MaxAttempts: 25,
+		Acceptors: []waiter.WaitAcceptor{
+			{
+				State:    "success",
+				Matcher:  "path",
+				Argument: "Table.GlobalSecondaryIndexes[*].IndexStatus",
+				Expected: string(schema.ActiveStatus),
+			},
+		},
+	}
+
+	w := waiter.Waiter{
+		Client: c,
+		Config: waiterCfg,
+		Input: &db.DescribeTableInput{
+			TableName: aws.String(tableName),
+		},
+	}
+	return w.Wait()
 }

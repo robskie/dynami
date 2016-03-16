@@ -45,7 +45,7 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 				Key: []sc.Key{
 					{
 						Name: "GlobalHash",
-						Type:       sc.HashKey,
+						Type: sc.HashKey,
 					},
 				},
 				Throughput: &sc.Throughput{
@@ -331,4 +331,191 @@ func (suite *DatabaseTestSuite) TestListTable() {
 	for _, t := range actualTables {
 		assert.Contains(tables, t)
 	}
+}
+
+func (suite *DatabaseTestSuite) TestUpdateTable() {
+	assert := suite.Assert()
+	require := suite.Require()
+
+	table := &sc.Table{
+		Name: "TestTable",
+		Attributes: []sc.Attribute{
+			{
+				Name: "Hash",
+				Type: sc.StringType,
+			},
+			{
+				Name: "Range",
+				Type: sc.NumberType,
+			},
+			{
+				Name: "GlobalHashA",
+				Type: sc.StringType,
+			},
+			{
+				Name: "GlobalHashB",
+				Type: sc.StringType,
+			},
+			{
+				Name: "GlobalHashC",
+				Type: sc.NumberType,
+			},
+		},
+		Throughput: &sc.Throughput{
+			Read:  10,
+			Write: 20,
+		},
+		Key: []sc.Key{
+			{
+				Name: "Hash",
+				Type: sc.HashKey,
+			},
+			{
+				Name: "Range",
+				Type: sc.RangeKey,
+			},
+		},
+		GlobalSecondaryIndexes: []sc.SecondaryIndex{
+			{
+				Name: "GlobalIndexA",
+				Key: []sc.Key{
+					{
+						Name: "GlobalHashA",
+						Type: sc.HashKey,
+					},
+				},
+				Projection: &sc.Projection{
+					Type: sc.ProjectKeysOnly,
+				},
+				Throughput: &sc.Throughput{
+					Read:  20,
+					Write: 30,
+				},
+			},
+			{
+				Name: "GlobalIndexB",
+				Key: []sc.Key{
+					{
+						Name: "GlobalHashB",
+						Type: sc.HashKey,
+					},
+				},
+				Projection: &sc.Projection{
+					Type: sc.ProjectKeysOnly,
+				},
+				Throughput: &sc.Throughput{
+					Read:  30,
+					Write: 40,
+				},
+			},
+			{
+				Name: "GlobalIndexC",
+				Key: []sc.Key{
+					{
+						Name: "GlobalHashC",
+						Type: sc.HashKey,
+					},
+				},
+				Projection: &sc.Projection{
+					Type: sc.ProjectAll,
+				},
+				Throughput: &sc.Throughput{
+					Read:  40,
+					Write: 50,
+				},
+			},
+		},
+	}
+
+	// Create table
+	sdb := suite.db
+	_, err := sdb.CreateTable(&db.CreateTableInput{
+		TableName:              aws.String("TestTable"),
+		AttributeDefinitions:   dbAttributeDefinitions(table.Attributes),
+		ProvisionedThroughput:  dbProvisionedThroughput(table.Throughput),
+		KeySchema:              dbKeySchema(table.Key),
+		GlobalSecondaryIndexes: dbGlobalSecondaryIndexes(table.GlobalSecondaryIndexes),
+	})
+	require.Nil(err)
+
+	// Update table throughput
+	table.Throughput = &sc.Throughput{
+		Read:  42,
+		Write: 52,
+	}
+
+	// Remove GlobalIndexA
+	table.RemoveGlobalSecondaryIndex("GlobalIndexA")
+
+	// Update GlobalIndexB
+	idxB := table.GetGlobalSecondaryIndex("GlobalIndexB")
+	idxB.Throughput = &sc.Throughput{
+		Read:  50,
+		Write: 60,
+	}
+	idxB.PStatus = sc.ActiveStatus
+	table.AddGlobalSecondaryIndex(idxB)
+
+	// Update GlobalIndexC
+	idxC := table.GetGlobalSecondaryIndex("GlobalIndexC")
+	idxC.Throughput = &sc.Throughput{
+		Read:  60,
+		Write: 70,
+	}
+	idxC.PStatus = sc.ActiveStatus
+	table.AddGlobalSecondaryIndex(idxC)
+
+	// Add GlobalIndexD
+	idxD := &sc.SecondaryIndex{
+		Name: "GlobalIndexD",
+		Key: []sc.Key{
+			{
+				Name: "GlobalHashD",
+				Type: sc.HashKey,
+			},
+		},
+		Projection: &sc.Projection{
+			Type: sc.ProjectAll,
+		},
+		Throughput: &sc.Throughput{
+			Read:  70,
+			Write: 80,
+		},
+	}
+	idxD.PStatus = sc.ActiveStatus
+	table.AddGlobalSecondaryIndex(idxD)
+	table.AddAttributes([]sc.Attribute{
+		{
+			Name: "GlobalHashD",
+			Type: sc.NumberType,
+		},
+	})
+
+	// Perform update
+	c := suite.client
+	err = c.UpdateTable(table)
+	assert.Nil(err)
+
+	resp, err := sdb.DescribeTable(&db.DescribeTableInput{
+		TableName: aws.String(table.Name),
+	})
+	assert.Nil(err)
+
+	// Check if table is active and updated
+	desc := resp.Table
+	assert.Equal(table.Throughput, throughput(desc.ProvisionedThroughput))
+	assert.Equal(string(sc.ActiveStatus), *desc.TableStatus)
+
+	// Check if added and updated gsi's are active
+	globalIndices := map[string]sc.SecondaryIndex{}
+	for _, idx := range secondaryIndexes(desc.GlobalSecondaryIndexes) {
+		assert.Equal(sc.ActiveStatus, idx.Status())
+		assert.Contains(table.GlobalSecondaryIndexes, idx)
+
+		globalIndices[idx.Name] = idx
+	}
+
+	// Check if deleted gsi is actually removed
+	_, ok := globalIndices["GlobalIndexA"]
+	assert.False(ok)
 }
