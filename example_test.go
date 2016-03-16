@@ -28,6 +28,36 @@ func ExampleClient_Get(client *dynamini.Client) {
 	client.Get("TestTable", &itemB)
 }
 
+func ExampleClient_CreateTable(client *dynamini.Client) {
+	type TestItem struct {
+		Hash       string `dbkey:"hash"`
+		Range      string `dbkey:"range"`
+		GlobalHash string `dbindex:"hash,GlobalIndex"`
+
+		BigValue   []byte
+		SmallValue string `dbindex:"project,GlobalIndex"`
+	}
+
+	// Create table schema from TestItem
+	table := schema.NewTable(
+		"TestTable",
+		TestItem{},
+		map[string]*schema.Throughput{
+			"TestTable": &schema.Throughput{
+				Read:  10,
+				Write: 20,
+			},
+			"GlobalIndex": &schema.Throughput{
+				Read:  30,
+				Write: 40,
+			},
+		},
+	)
+
+	// Perform table creation
+	client.CreateTable(table)
+}
+
 func ExampleClient_UpdateTable(client *dynamini.Client) {
 	// Get table schema
 	table, _ := client.DescribeTable("TestTable")
