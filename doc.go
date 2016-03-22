@@ -56,9 +56,9 @@ shown in struct field C.
 
 Item Operations
 
-There are three basic item operations: Put, Get, and Delete. Each of these
-operations accepts an item with nonempty primary key except Get which also
-accepts local and global secondary index keys.
+There are three basic item operations: PutItem, GetItem, and DeleteItem. Each of
+these operations accepts an item with nonempty primary key except GetItem which
+also accepts local and global secondary index keys.
 
 Example code:
 
@@ -69,16 +69,16 @@ Example code:
 
   item := Item{"key", "somevalue"}
   client := dynami.NewClient("region", "id", "key")
-  client.Put("ItemTable", item)
+  client.PutItem("ItemTable", item)
 
   // After some time...
 
   fetched := Item{Key: "key"}
-  client.Get("ItemTable", &fetched)
+  client.GetItem("ItemTable", &fetched)
 
   // Do something with the fetched item
 
-  client.Delete("ItemTable", fetched)
+  client.DeleteItem("ItemTable", fetched)
 
 
 Batch Operations

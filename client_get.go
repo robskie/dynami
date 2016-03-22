@@ -9,13 +9,13 @@ import (
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-// Get fetches an item from the database. item must
+// GetItem fetches an item from the database. item must
 // be a pointer to a map[string]interface{} or pointer
 // to a struct. In addition to retrieving items by its
 // primary key, it can also get items using its local or
 // global secondary index key, whichever is not empty. This
 // only applies if item is a struct pointer.
-func (c *Client) Get(
+func (c *Client) GetItem(
 	tableName string,
 	item interface{}, consistent ...bool) error {
 

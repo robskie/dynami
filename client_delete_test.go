@@ -26,7 +26,7 @@ func (suite *DatabaseTestSuite) TestDelete() {
 	assert.Nil(err)
 
 	c := suite.client
-	err = c.Delete("Quote", quote)
+	err = c.DeleteItem("Quote", quote)
 	assert.Nil(err)
 
 	key := item
@@ -59,7 +59,7 @@ func (suite *DatabaseTestSuite) TestDeleteMap() {
 	assert.Nil(err)
 
 	c := suite.client
-	err = c.Delete("Quote", quote)
+	err = c.DeleteItem("Quote", quote)
 	assert.Nil(err)
 
 	key := item

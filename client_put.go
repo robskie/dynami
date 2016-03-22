@@ -9,10 +9,10 @@ import (
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-// Put adds an item to the database. item must be a
+// PutItem adds an item to the database. item must be a
 // map[string]interface{}, struct, or a pointer to any
 // of those with nonempty primary key.
-func (c *Client) Put(tableName string, item interface{}) error {
+func (c *Client) PutItem(tableName string, item interface{}) error {
 	err := checkType(item, reflect.Struct, map[string]interface{}{})
 	if err != nil {
 		return err

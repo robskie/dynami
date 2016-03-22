@@ -34,7 +34,7 @@ func (suite *DatabaseTestSuite) TestGet() {
 
 	c := suite.client
 	consistent := true
-	err = c.Get("Book", &bookA, consistent)
+	err = c.GetItem("Book", &bookA, consistent)
 	assert.Nil(err)
 	assert.Equal(book, bookA)
 
@@ -44,7 +44,7 @@ func (suite *DatabaseTestSuite) TestGet() {
 		Title: book.Title,
 	}
 
-	err = c.Get("Book", &bookB, consistent)
+	err = c.GetItem("Book", &bookB, consistent)
 	assert.Nil(err)
 	assert.Equal(book, bookB)
 }
@@ -75,7 +75,7 @@ func (suite *DatabaseTestSuite) TestGetMap() {
 
 	c := suite.client
 	consistent := true
-	err = c.Get("Book", &bookC, consistent)
+	err = c.GetItem("Book", &bookC, consistent)
 	assert.Nil(err)
 	assert.Equal(book.Genre, bookC["Genre"])
 }

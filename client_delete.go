@@ -8,10 +8,10 @@ import (
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-// Delete removes an item from a table. item must be a
-// map[string]interface{}, struct, or a pointer to any
-// of the two with nonempty primary key.
-func (c *Client) Delete(tableName string, item interface{}) error {
+// DeleteItem removes an item from a table. item must
+// be a map[string]interface{}, struct, or a pointer to
+// any of the two with nonempty primary key.
+func (c *Client) DeleteItem(tableName string, item interface{}) error {
 	err := checkType(item, reflect.Struct, map[string]interface{}{})
 	if err != nil {
 		return err

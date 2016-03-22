@@ -16,7 +16,7 @@ func (suite *DatabaseTestSuite) TestPut() {
 	}
 
 	c := suite.client
-	err := c.Put("Book", origBook)
+	err := c.PutItem("Book", origBook)
 	assert.Nil(err)
 
 	actualBook := tBook{
@@ -53,7 +53,7 @@ func (suite *DatabaseTestSuite) TestPutMap() {
 	}
 
 	c := suite.client
-	err := c.Put("Book", origBook)
+	err := c.PutItem("Book", origBook)
 	assert.Nil(err)
 
 	actualBook := map[string]interface{}{

@@ -5,7 +5,7 @@ import (
 	"github.com/robskie/dynami/schema"
 )
 
-func ExampleClient_Get(client *dynami.Client) {
+func ExampleClient_GetItem(client *dynami.Client) {
 	type TestItem struct {
 		Hash       string `dbkey:"hash"`
 		Range      string `dbkey:"range"`
@@ -19,13 +19,13 @@ func ExampleClient_Get(client *dynami.Client) {
 		Hash:  "somehash",
 		Range: "somerange",
 	}
-	client.Get("TestTable", &itemA)
+	client.GetItem("TestTable", &itemA)
 
 	// Fetch using secondary index key
 	itemB := TestItem{
 		GlobalHash: "anotherhash",
 	}
-	client.Get("TestTable", &itemB)
+	client.GetItem("TestTable", &itemB)
 }
 
 func ExampleClient_CreateTable(client *dynami.Client) {
