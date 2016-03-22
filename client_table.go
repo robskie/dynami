@@ -58,8 +58,27 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		return fmt.Errorf("dynami: cannot update table (%v)", err)
 	}
 
-	// Update table's provisioned throughput
+	// Update table stream
 	cdb := c.db
+	if table.StreamEnabled != origt.StreamEnabled {
+		dbStreamSpec := &db.StreamSpecification{
+			StreamEnabled:  &table.StreamEnabled,
+			StreamViewType: aws.String(db.StreamViewTypeNewAndOldImages),
+		}
+		if !table.StreamEnabled {
+			dbStreamSpec.StreamViewType = nil
+		}
+
+		_, err := cdb.UpdateTable(&db.UpdateTableInput{
+			TableName:           aws.String(table.Name),
+			StreamSpecification: dbStreamSpec,
+		})
+		if err != nil {
+			return fmt.Errorf("dynami: cannot update stream (%v)", err)
+		}
+	}
+
+	// Update table's provisioned throughput
 	tp := table.Throughput
 	otp := origt.Throughput
 	if tp.Read != otp.Read || tp.Write != otp.Write {
