@@ -25,6 +25,14 @@ func (c *Client) CreateTable(table *schema.Table) error {
 		StreamSpecification:    table.PStreamSpec,
 	}
 
+	// If stream is enabled, create a new stream spec if there isn't any
+	if table.StreamEnabled && input.StreamSpecification == nil {
+		input.StreamSpecification = &db.StreamSpecification{
+			StreamEnabled:  aws.Bool(true),
+			StreamViewType: aws.String(db.StreamViewTypeNewAndOldImages),
+		}
+	}
+
 	cdb := c.db
 	_, err := cdb.CreateTable(input)
 	if err != nil {
@@ -200,12 +208,14 @@ func (c *Client) DescribeTable(tableName string) (*schema.Table, error) {
 		Key:        keySchema(desc.KeySchema),
 		LocalSecondaryIndexes:  secondaryIndexes(desc.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: secondaryIndexes(desc.GlobalSecondaryIndexes),
+		StreamEnabled:          streamEnabled(desc.StreamSpecification),
 	}
 	table.PSize = int(*desc.TableSizeBytes)
 	table.PItemCount = int(*desc.ItemCount)
 	table.PStatus = schema.Status(*desc.TableStatus)
 	table.PCreationDate = *desc.CreationDateTime
 	table.PStreamSpec = desc.StreamSpecification
+	table.PStreamArn = desc.LatestStreamArn
 
 	return table, nil
 }
@@ -229,12 +239,14 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 		Key:        keySchema(desc.KeySchema),
 		LocalSecondaryIndexes:  secondaryIndexes(desc.LocalSecondaryIndexes),
 		GlobalSecondaryIndexes: secondaryIndexes(desc.GlobalSecondaryIndexes),
+		StreamEnabled:          streamEnabled(desc.StreamSpecification),
 	}
 	table.PSize = int(*desc.TableSizeBytes)
 	table.PItemCount = int(*desc.ItemCount)
 	table.PStatus = schema.Status(*desc.TableStatus)
 	table.PCreationDate = *desc.CreationDateTime
 	table.PStreamSpec = desc.StreamSpecification
+	table.PStreamArn = desc.LatestStreamArn
 
 	err = cdb.WaitUntilTableNotExists(&db.DescribeTableInput{
 		TableName: aws.String(tableName),
@@ -480,6 +492,14 @@ func secondaryIndexes(dbSecondaryIdxs interface{}) []schema.SecondaryIndex {
 	}
 
 	return idxs
+}
+
+func streamEnabled(dbStreamSpec *db.StreamSpecification) bool {
+	if dbStreamSpec == nil {
+		return false
+	}
+
+	return *dbStreamSpec.StreamEnabled
 }
 
 func waitUntilIndicesActive(c *db.DynamoDB, tableName string) error {

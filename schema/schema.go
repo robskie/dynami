@@ -128,6 +128,8 @@ type tprivate struct {
 	PStatus       Status
 	PCreationDate time.Time
 
+	// Stream related fields
+	PStreamArn  *string
 	PStreamSpec *db.StreamSpecification
 }
 
@@ -139,6 +141,7 @@ type Table struct {
 	Throughput             *Throughput
 	LocalSecondaryIndexes  []SecondaryIndex
 	GlobalSecondaryIndexes []SecondaryIndex
+	StreamEnabled          bool
 
 	// private read-only fields
 	tprivate
