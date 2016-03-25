@@ -28,6 +28,31 @@ func ExampleClient_GetItem(client *dynami.Client) {
 	client.GetItem("TestTable", &itemB)
 }
 
+func ExampleClient_GetStream(client *dynami.Client) {
+	type TestItem struct {
+		Hash  string `dbkey:"hash"`
+		Value int
+	}
+
+	it, _ := client.GetStream("TestTable")
+
+	// Process each record as it arrives.
+	// Note that this loop doesn't terminate
+	// as long as the stream is enabled.
+	var item TestItem
+	for it.WaitNext() {
+		recordType, _ := it.Next(&item)
+		switch recordType {
+		case dynami.AddedRecord:
+			// Process added item
+		case dynami.UpdatedRecord:
+			// Process updated item
+		case dynami.DeletedRecord:
+			// Process deleted item
+		}
+	}
+}
+
 func ExampleClient_CreateTable(client *dynami.Client) {
 	type TestItem struct {
 		Hash       string `dbkey:"hash"`
