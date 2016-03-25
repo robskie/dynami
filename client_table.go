@@ -234,7 +234,9 @@ func (c *Client) DescribeTable(tableName string) (*schema.Table, error) {
 	table.PStatus = schema.Status(*desc.TableStatus)
 	table.PCreationDate = *desc.CreationDateTime
 	table.PStreamSpec = desc.StreamSpecification
-	table.PStreamArn = desc.LatestStreamArn
+	if desc.LatestStreamArn != nil {
+		table.PStreamARN = *desc.LatestStreamArn
+	}
 
 	return table, nil
 }
@@ -265,7 +267,9 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 	table.PStatus = schema.Status(*desc.TableStatus)
 	table.PCreationDate = *desc.CreationDateTime
 	table.PStreamSpec = desc.StreamSpecification
-	table.PStreamArn = desc.LatestStreamArn
+	if desc.LatestStreamArn != nil {
+		table.PStreamARN = *desc.LatestStreamArn
+	}
 
 	err = cdb.WaitUntilTableNotExists(&db.DescribeTableInput{
 		TableName: aws.String(tableName),

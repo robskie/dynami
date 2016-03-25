@@ -129,7 +129,7 @@ type tprivate struct {
 	PCreationDate time.Time
 
 	// Stream related fields
-	PStreamArn  *string
+	PStreamARN  string
 	PStreamSpec *db.StreamSpecification
 }
 

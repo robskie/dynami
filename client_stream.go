@@ -101,8 +101,8 @@ func newShardIterator(
 
 	if shard.seqRange.has(exclStartSeqNum) {
 		resp, err := dbs.GetShardIterator(&dynamodbstreams.GetShardIteratorInput{
-			StreamArn:         &arn,
-			ShardId:           &shard.id,
+			StreamArn:         aws.String(arn),
+			ShardId:           aws.String(shard.id),
 			SequenceNumber:    (*string)(exclStartSeqNum),
 			ShardIteratorType: aws.String(dynamodbstreams.ShardIteratorTypeAfterSequenceNumber),
 		})
@@ -113,8 +113,8 @@ func newShardIterator(
 	}
 
 	resp, err := dbs.GetShardIterator(&dynamodbstreams.GetShardIteratorInput{
-		StreamArn:         &arn,
-		ShardId:           &shard.id,
+		StreamArn:         aws.String(arn),
+		ShardId:           aws.String(shard.id),
 		ShardIteratorType: aws.String(dynamodbstreams.ShardIteratorTypeTrimHorizon),
 	})
 	if err != nil {
@@ -137,12 +137,8 @@ func (c *Client) GetStream(tableName string) (*RecordIterator, error) {
 		return nil, fmt.Errorf("dynami: cannot get stream (%v)", err)
 	}
 
-	arn := ""
-	if table.PStreamArn != nil {
-		arn = *table.PStreamArn
-	}
 	it := &RecordIterator{
-		arn:               arn,
+		arn:               table.PStreamARN,
 		dbs:               dynamodbstreams.New(c.session),
 		processedShardIDs: map[string]bool{},
 	}
@@ -215,7 +211,7 @@ func (it *RecordIterator) getNext(wait bool) bool {
 	for range ticker.C {
 		// Describe streams
 		resp, err := dbs.DescribeStream(&dynamodbstreams.DescribeStreamInput{
-			StreamArn:             &it.arn,
+			StreamArn:             aws.String(it.arn),
 			ExclusiveStartShardId: it.lastShardID,
 		})
 		if err != nil && err.(awserr.Error).Code() == errResourceNotFound {

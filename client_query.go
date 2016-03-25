@@ -189,9 +189,9 @@ func (q *Query) Filter(expr string, values ...interface{}) *Query {
 }
 
 // Run executes the query and returns a result iterator.
-func (q *Query) Run() *Iterator {
+func (q *Query) Run() *ItemIterator {
 	if q.err != nil {
-		return &Iterator{}
+		return &ItemIterator{}
 	}
 
 	qdb := q.db
@@ -242,7 +242,7 @@ func (q *Query) Run() *Iterator {
 		queryInput = sinput
 	}
 
-	return &Iterator{
+	return &ItemIterator{
 		db:         qdb,
 		limit:      q.limit,
 		items:      outpItems,
@@ -251,8 +251,8 @@ func (q *Query) Run() *Iterator {
 	}
 }
 
-// Iterator iterates over the result of a query.
-type Iterator struct {
+// ItemIterator iterates over the result of a query.
+type ItemIterator struct {
 	db *db.DynamoDB
 
 	index int
@@ -270,7 +270,7 @@ type Iterator struct {
 
 // HasNext returns true if there are
 // more query results to iterate over.
-func (it *Iterator) HasNext() bool {
+func (it *ItemIterator) HasNext() bool {
 	if it.index < len(it.items) {
 		return true
 	}
@@ -310,7 +310,7 @@ func (it *Iterator) HasNext() bool {
 
 // Next loads the next result to item. item must be a
 // pointer to map[string]interface{} or a pointer to struct.
-func (it *Iterator) Next(item interface{}) error {
+func (it *ItemIterator) Next(item interface{}) error {
 	if !it.HasNext() {
 		return fmt.Errorf("dynami: no more items to return")
 	}
