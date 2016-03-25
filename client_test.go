@@ -98,6 +98,11 @@ func (suite *DatabaseTestSuite) createQuoteTable() {
 		},
 
 		TableName: aws.String("Quote"),
+
+		StreamSpecification: &db.StreamSpecification{
+			StreamEnabled:  aws.Bool(true),
+			StreamViewType: aws.String(db.StreamViewTypeNewAndOldImages),
+		},
 	}
 
 	_, err := suite.db.CreateTable(createTableInput)
@@ -221,7 +226,7 @@ func (suite *DatabaseTestSuite) SetupSuite() {
 		},
 	)
 	suite.db = db.New(session)
-	suite.client = &Client{suite.db}
+	suite.client = &Client{db: suite.db, session: session}
 }
 
 func (suite *DatabaseTestSuite) TearDownSuite() {

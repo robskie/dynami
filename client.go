@@ -16,7 +16,8 @@ var (
 
 // Client represents a DynamoDB client.
 type Client struct {
-	db *db.DynamoDB
+	db      *db.DynamoDB
+	session *session.Session
 }
 
 // NewClient creates a new client from the given credentials.
@@ -27,5 +28,5 @@ func NewClient(region string, id string, key string) *Client {
 	})
 
 	db := db.New(session)
-	return &Client{db}
+	return &Client{db: db, session: session}
 }
