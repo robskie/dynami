@@ -63,7 +63,10 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 				},
 			},
 		},
+
+		StreamEnabled: true,
 	}
+	table.GlobalSecondaryIndexes[0].PStatus = sc.ActiveStatus
 
 	c := suite.client
 	err := c.CreateTable(table)
@@ -74,7 +77,34 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 		TableName: aws.String(table.Name),
 	})
 	assert.Nil(err)
-	assert.Equal(aws.String(db.TableStatusActive), resp.Table.TableStatus)
+
+	desc := resp.Table
+	assert.Equal(aws.String(db.TableStatusActive), desc.TableStatus)
+
+	// Check returned table
+	assert.Equal(table.Name, *desc.TableName)
+	assert.Equal(table.Throughput, throughput(desc.ProvisionedThroughput))
+	assert.Equal(table.Key, keySchema(desc.KeySchema))
+
+	assert.Equal(
+		table.Attributes,
+		attributeDefinitions(desc.AttributeDefinitions),
+	)
+
+	assert.Equal(
+		table.LocalSecondaryIndexes,
+		secondaryIndexes(desc.LocalSecondaryIndexes),
+	)
+
+	assert.Equal(
+		table.GlobalSecondaryIndexes,
+		secondaryIndexes(desc.GlobalSecondaryIndexes),
+	)
+
+	assert.Equal(
+		table.StreamEnabled,
+		streamEnabled(desc.StreamSpecification),
+	)
 }
 
 func (suite *DatabaseTestSuite) TestDeleteTable() {
@@ -286,6 +316,11 @@ func (suite *DatabaseTestSuite) TestDescribeTable() {
 		secondaryIndexes(desc.GlobalSecondaryIndexes),
 		table.GlobalSecondaryIndexes,
 	)
+
+	assert.Equal(
+		streamEnabled(desc.StreamSpecification),
+		table.StreamEnabled,
+	)
 }
 
 func (suite *DatabaseTestSuite) TestListTable() {
@@ -438,6 +473,9 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	})
 	require.Nil(err)
 
+	// Enable stream
+	table.StreamEnabled = true
+
 	// Update table throughput
 	table.Throughput = &sc.Throughput{
 		Read:  42,
@@ -505,6 +543,9 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	desc := resp.Table
 	assert.Equal(table.Throughput, throughput(desc.ProvisionedThroughput))
 	assert.Equal(string(sc.ActiveStatus), *desc.TableStatus)
+
+	// Check if stream is enabled
+	assert.Equal(table.StreamEnabled, streamEnabled(desc.StreamSpecification))
 
 	// Check if added and updated gsi's are active
 	globalIndices := map[string]sc.SecondaryIndex{}
