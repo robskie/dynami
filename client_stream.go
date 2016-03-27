@@ -34,6 +34,14 @@ type record struct {
 
 type seqNum string
 
+func (sn *seqNum) eq(num *seqNum) bool {
+	if num == nil {
+		return false
+	}
+
+	return *sn == *num
+}
+
 func (sn *seqNum) less(num *seqNum) bool {
 	if num == nil {
 		return true
@@ -47,7 +55,7 @@ func (sn *seqNum) less(num *seqNum) bool {
 }
 
 func (sn *seqNum) lessEq(num *seqNum) bool {
-	if *sn == *num {
+	if sn.eq(num) {
 		return true
 	}
 
@@ -69,6 +77,8 @@ func (sr seqNumRange) has(sn *seqNum) bool {
 type shard struct {
 	id       string
 	seqRange *seqNumRange
+
+	closed bool
 }
 
 type bySeqNum []shard
@@ -141,6 +151,7 @@ func (c *Client) GetStream(tableName string) (*RecordIterator, error) {
 		arn:               table.PStreamARN,
 		dbs:               dynamodbstreams.New(c.session),
 		processedShardIDs: map[string]bool{},
+		lastRecSeqNum:     (*seqNum)(aws.String("")),
 	}
 
 	return it, nil
@@ -281,6 +292,7 @@ func (it *RecordIterator) getShards(dbShards []*dynamodbstreams.Shard) []shard {
 		shards = append(shards, shard{
 			id:       *dbs.ShardId,
 			seqRange: seqRange,
+			closed:   seqRange.end != nil,
 		})
 	}
 
@@ -326,14 +338,18 @@ func (it *RecordIterator) getRecords(st *shardIterator) ([]record, error) {
 			records = append(records, rec)
 		}
 
-		// Shard iterator has been closed
-		if resp.NextShardIterator == nil {
-			it.processedShardIDs[st.shard.id] = true
+		// Check if the shard iterator has been exhausted
+		shard := st.shard
+		if resp.NextShardIterator == nil ||
+			it.lastRecSeqNum.eq(shard.seqRange.end) ||
+			(len(resp.Records) == 0 && shard.closed) {
+
+			it.processedShardIDs[shard.id] = true
 			break
 		}
 		shardIt = resp.NextShardIterator
 
-		// No more records for now
+		// Shard is still open but there are no more records
 		if len(resp.Records) == 0 {
 			break
 		}
