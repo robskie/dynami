@@ -335,6 +335,10 @@ func (it *RecordIterator) getRecords(st *shardIterator) ([]record, error) {
 				rec.dbitem = r.Dynamodb.NewImage
 			}
 
+			if len(rec.dbitem) == 0 {
+				rec.dbitem = r.Dynamodb.Keys
+			}
+
 			records = append(records, rec)
 		}
 

@@ -1,6 +1,7 @@
 package dynami
 
 import (
+	"log"
 	"math/rand"
 	"time"
 
@@ -177,4 +178,136 @@ func (suite *DatabaseTestSuite) TestGetStreamLive() {
 
 	<-done
 	assert.Equal(randQuotes, fetchedQuotes)
+}
+
+func (suite *DatabaseTestSuite) TestGetStreamBackCompat() {
+	assert := suite.Assert()
+
+	type tItem struct {
+		Key   string `dbkey:"hash"`
+		Value string
+	}
+
+	createStreamTable := func(tableName, streamViewType string) {
+		createTableInput := &db.CreateTableInput{
+			AttributeDefinitions: []*db.AttributeDefinition{
+				{
+					AttributeName: aws.String("Key"),
+					AttributeType: aws.String(db.ScalarAttributeTypeS),
+				},
+			},
+
+			KeySchema: []*db.KeySchemaElement{
+				{
+					AttributeName: aws.String("Key"),
+					KeyType:       aws.String(db.KeyTypeHash),
+				},
+			},
+
+			ProvisionedThroughput: &db.ProvisionedThroughput{
+				ReadCapacityUnits:  aws.Int64(1),
+				WriteCapacityUnits: aws.Int64(1),
+			},
+
+			TableName: aws.String(tableName),
+
+			StreamSpecification: &db.StreamSpecification{
+				StreamEnabled:  aws.Bool(true),
+				StreamViewType: aws.String(streamViewType),
+			},
+		}
+
+		_, err := suite.db.CreateTable(createTableInput)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Create keys only stream
+	createStreamTable("KeysOnlyTable", db.StreamViewTypeKeysOnly)
+
+	item := tItem{
+		Key:   "key1",
+		Value: "value1",
+	}
+	dbitem, err := dbattribute.ConvertToMap(item)
+	assert.Nil(err)
+
+	sdb := suite.db
+	_, err = sdb.PutItem(&db.PutItemInput{
+		Item:      dbitem,
+		TableName: aws.String("KeysOnlyTable"),
+	})
+	assert.Nil(err)
+
+	c := suite.client
+	it, err := c.GetStream("KeysOnlyTable")
+	assert.Nil(err)
+
+	var fetched tItem
+	assert.True(it.HasNext())
+	_, err = it.Next(&fetched)
+	assert.Nil(err)
+	assert.Equal("key1", fetched.Key)
+
+	// Create new image stream
+	createStreamTable("NewImageTable", db.StreamViewTypeNewImage)
+
+	item = tItem{
+		Key:   "key2",
+		Value: "value2",
+	}
+	dbitem, err = dbattribute.ConvertToMap(item)
+	assert.Nil(err)
+
+	_, err = sdb.PutItem(&db.PutItemInput{
+		Item:      dbitem,
+		TableName: aws.String("NewImageTable"),
+	})
+	assert.Nil(err)
+
+	it, err = c.GetStream("NewImageTable")
+	assert.Nil(err)
+
+	assert.True(it.HasNext())
+	_, err = it.Next(&fetched)
+	assert.Nil(err)
+	assert.Equal(item, fetched)
+
+	// Create old image stream
+	createStreamTable("OldImageTable", db.StreamViewTypeOldImage)
+
+	item = tItem{
+		Key:   "key3",
+		Value: "value3",
+	}
+	dbitem, err = dbattribute.ConvertToMap(item)
+	assert.Nil(err)
+
+	_, err = sdb.PutItem(&db.PutItemInput{
+		Item:      dbitem,
+		TableName: aws.String("OldImageTable"),
+	})
+	assert.Nil(err)
+
+	delete(dbitem, "Value")
+	_, err = sdb.DeleteItem(&db.DeleteItemInput{
+		Key:       dbitem,
+		TableName: aws.String("OldImageTable"),
+	})
+
+	it, err = c.GetStream("OldImageTable")
+	assert.Nil(err)
+
+	assert.True(it.HasNext())
+	rt, err := it.Next(&fetched)
+	assert.Nil(err)
+	assert.Equal(AddedRecord, rt)
+	assert.Equal("key3", fetched.Key)
+
+	assert.True(it.HasNext())
+	rt, err = it.Next(&fetched)
+	assert.Nil(err)
+	assert.Equal(DeletedRecord, rt)
+	assert.Equal(item, fetched)
 }
