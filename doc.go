@@ -68,7 +68,7 @@ Example code:
   }
 
   item := Item{"key", "somevalue"}
-  client := dynami.NewClient("region", "id", "key")
+  client := dynami.NewClient(dynami.USEast1, "id", "key")
   client.PutItem("ItemTable", item)
 
   // After some time...
@@ -111,7 +111,7 @@ Example code:
   }
 
   // Add items
-  client := dynami.NewClient("region", "id", "key")
+  client := dynami.NewClient(dynami.USEast1, "id", "key")
   client.BatchPut("ItemTableA", itemsA).
     Put("ItemTableB", itemsB).
     Run()
@@ -166,7 +166,7 @@ Example code:
     Value int
   }
 
-  client := dynami.NewClient("region", "id", "key")
+  client := dynami.NewClient(dynami.USEast1, "id", "key")
   it := client.Query("ItemTable").
     HashFilter("Hash", "somehashvalue").
     RangeFilter("Range BETWEEN :rval1 AND :rval2", 1, 10).

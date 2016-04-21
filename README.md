@@ -26,7 +26,7 @@ type Item struct {
 }
 
 item := Item{"key", "somevalue"}
-client := dynami.NewClient("region", "id", "key")
+client := dynami.NewClient(dynami.USEast1, "id", "key")
 client.Put("ItemTable", item)
 
 // After some time...
@@ -48,7 +48,7 @@ type Item struct {
 	Value int
 }
 
-client := dynami.NewClient("region", "id", "key")
+client := dynami.NewClient(dynami.USEast1, "id", "key")
 it := client.Query("ItemTable").
 	HashFilter("Hash", "somehashvalue").
 	RangeFilter("Range BETWEEN :rval1 AND :rval2", 1, 10).

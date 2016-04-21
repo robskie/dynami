@@ -7,10 +7,11 @@ import (
 	"os/user"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/awstesting/unit"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/stretchr/testify/suite"
 )
 
 type tInfo struct {
@@ -226,7 +227,13 @@ func (suite *DatabaseTestSuite) SetupSuite() {
 		},
 	)
 	suite.db = db.New(session)
-	suite.client = &Client{db: suite.db, session: session}
+
+	testRegion := &Region{
+		"test-region",
+		"http://localhost:8000",
+		"http://localhost:8000",
+	}
+	suite.client = NewClient(testRegion, "test-id", "test-key")
 }
 
 func (suite *DatabaseTestSuite) TearDownSuite() {

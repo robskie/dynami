@@ -149,7 +149,7 @@ func (c *Client) GetStream(tableName string) (*RecordIterator, error) {
 
 	it := &RecordIterator{
 		arn:               table.PStreamARN,
-		dbs:               dynamodbstreams.New(c.session),
+		dbs:               c.dbs,
 		processedShardIDs: map[string]bool{},
 		lastRecSeqNum:     (*seqNum)(aws.String("")),
 	}
