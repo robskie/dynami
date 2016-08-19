@@ -65,7 +65,7 @@ func getIndexKey(tableName string, keySchema []sc.Key, item dbitem) string {
 	ik := &ikey{tableName: tableName}
 
 	mkey := map[string]interface{}{}
-	dbattribute.ConvertFromMap(item, &mkey)
+	dbattribute.UnmarshalMap(item, &mkey)
 	for _, k := range keySchema {
 		ik.keys = append(ik.keys, mkey[k.Name])
 	}
@@ -148,7 +148,7 @@ func (b *batchOp) addItems(
 
 		dbitem := k.value
 		if len(keysOnly) == 0 || keysOnly[0] == false {
-			dbitem, err = dbattribute.ConvertToMap(item)
+			dbitem, err = dbattribute.MarshalMap(item)
 			if err != nil {
 				err = fmt.Errorf("dynami: invalid item (%v)", err)
 				b.errs[ekey{tableName, i}] = err

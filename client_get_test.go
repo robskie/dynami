@@ -16,7 +16,7 @@ func (suite *DatabaseTestSuite) TestGet() {
 		Author: "Robert Penn Warren",
 		Genre:  "Fiction",
 	}
-	item, err := dbattribute.ConvertToMap(book)
+	item, err := dbattribute.MarshalMap(book)
 	assert.Nil(err)
 	item = removeEmptyAttr(item)
 
@@ -57,7 +57,7 @@ func (suite *DatabaseTestSuite) TestGetMap() {
 		Author: "Robert Penn Warren",
 		Genre:  "Fiction",
 	}
-	item, err := dbattribute.ConvertToMap(book)
+	item, err := dbattribute.MarshalMap(book)
 	assert.Nil(err)
 	item = removeEmptyAttr(item)
 
@@ -103,7 +103,7 @@ func (suite *DatabaseTestSuite) TestBatchGet() {
 
 	sdb := suite.db
 	for _, b := range origBooks {
-		item, err := dbattribute.ConvertToMap(b)
+		item, err := dbattribute.MarshalMap(b)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -174,7 +174,7 @@ func (suite *DatabaseTestSuite) TestBatchGetMap() {
 
 	sdb := suite.db
 	for _, b := range origBooks {
-		item, err := dbattribute.ConvertToMap(b)
+		item, err := dbattribute.MarshalMap(b)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -225,7 +225,7 @@ func (suite *DatabaseTestSuite) TestBatchGetMultiTable() {
 
 	sdb := suite.db
 	for _, b := range randBooks {
-		item, err := dbattribute.ConvertToMap(b)
+		item, err := dbattribute.MarshalMap(b)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -253,7 +253,7 @@ func (suite *DatabaseTestSuite) TestBatchGetMultiTable() {
 	}
 
 	for _, q := range randQuotes {
-		item, err := dbattribute.ConvertToMap(q)
+		item, err := dbattribute.MarshalMap(q)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -297,7 +297,7 @@ func (suite *DatabaseTestSuite) TestBatchGetBig() {
 	// Create write requests
 	wreqs := make([]*db.WriteRequest, nitems)
 	for i, b := range books {
-		dbitem, err := dbattribute.ConvertToMap(b)
+		dbitem, err := dbattribute.MarshalMap(b)
 		require.Nil(err)
 
 		wreqs[i] = &db.WriteRequest{

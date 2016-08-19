@@ -49,7 +49,7 @@ func getPrimaryKey(item interface{}) (*dbkey, error) {
 	val := reflect.Indirect(reflect.ValueOf(item))
 	item = val.Interface()
 
-	kv, err := dbattribute.ConvertToMap(item)
+	kv, err := dbattribute.MarshalMap(item)
 	if err != nil {
 		return nil, fmt.Errorf("dynami: invalid item (%v)", err)
 	}
@@ -75,7 +75,7 @@ func getSecondaryKey(item interface{}) (*dbkey, error) {
 	val := reflect.Indirect(reflect.ValueOf(item))
 	item = val.Interface()
 
-	kv, err := dbattribute.ConvertToMap(item)
+	kv, err := dbattribute.MarshalMap(item)
 	if err != nil {
 		return nil, fmt.Errorf("dynami: invalid item (%v)", err)
 	}

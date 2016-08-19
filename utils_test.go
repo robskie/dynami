@@ -11,7 +11,7 @@ func (suite *DatabaseTestSuite) TestGetKey() {
 		Author: "George Orwell",
 	}
 
-	item, err := dbattribute.ConvertToMap(bookA)
+	item, err := dbattribute.MarshalMap(bookA)
 	assert.Nil(err)
 
 	key, err := getKey(bookA)
@@ -26,7 +26,7 @@ func (suite *DatabaseTestSuite) TestGetKey() {
 		Title: "Catch-22",
 	}
 
-	item, err = dbattribute.ConvertToMap(bookB)
+	item, err = dbattribute.MarshalMap(bookB)
 	assert.Nil(err)
 
 	key, err = getKey(bookB)

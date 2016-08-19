@@ -196,7 +196,7 @@ func (it *RecordIterator) Next(record interface{}) (RecordType, error) {
 
 	rec := it.records[it.index]
 	if record != nil {
-		err := dbattribute.ConvertFromMap(rec.dbitem, record)
+		err := dbattribute.UnmarshalMap(rec.dbitem, record)
 		if err != nil {
 			return unknownRecord, fmt.Errorf("dynami: invalid record (%v)", err)
 		}

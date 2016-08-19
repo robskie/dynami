@@ -24,7 +24,7 @@ func (suite *DatabaseTestSuite) TestPut() {
 		Author: origBook.Author,
 	}
 
-	attrs, err := dbattribute.ConvertToMap(actualBook)
+	attrs, err := dbattribute.MarshalMap(actualBook)
 	assert.Nil(err)
 
 	sdb := suite.db
@@ -38,7 +38,7 @@ func (suite *DatabaseTestSuite) TestPut() {
 	})
 	assert.Nil(err)
 
-	err = dbattribute.ConvertFromMap(out.Item, &actualBook)
+	err = dbattribute.UnmarshalMap(out.Item, &actualBook)
 	assert.Nil(err)
 	assert.Equal(origBook, actualBook)
 }
@@ -61,7 +61,7 @@ func (suite *DatabaseTestSuite) TestPutMap() {
 		"Author": origBook["Author"],
 	}
 
-	attrs, err := dbattribute.ConvertToMap(actualBook)
+	attrs, err := dbattribute.MarshalMap(actualBook)
 	assert.Nil(err)
 
 	sdb := suite.db
@@ -75,7 +75,7 @@ func (suite *DatabaseTestSuite) TestPutMap() {
 	})
 	assert.Nil(err)
 
-	err = dbattribute.ConvertFromMap(out.Item, &actualBook)
+	err = dbattribute.UnmarshalMap(out.Item, &actualBook)
 	assert.Nil(err)
 	assert.Equal(origBook, actualBook)
 }
@@ -128,7 +128,7 @@ func (suite *DatabaseTestSuite) TestBatchPut() {
 	assert.Len(out.Items, len(expected))
 	for _, itemAttr := range out.Items {
 		var b tBook
-		err = dbattribute.ConvertFromMap(itemAttr, &b)
+		err = dbattribute.UnmarshalMap(itemAttr, &b)
 		assert.Contains(expected, b)
 	}
 
@@ -192,7 +192,7 @@ func (suite *DatabaseTestSuite) TestBatchPutMap() {
 	assert.Len(out.Items, len(expected))
 	for _, itemAttr := range out.Items {
 		var b map[string]interface{}
-		err = dbattribute.ConvertFromMap(itemAttr, &b)
+		err = dbattribute.UnmarshalMap(itemAttr, &b)
 		assert.Contains(expected, b)
 	}
 }
@@ -232,7 +232,7 @@ func (suite *DatabaseTestSuite) TestBatchPutMultiTable() {
 	assert.Len(out.Items, len(randBooks))
 	for _, itemAttr := range out.Items {
 		var b tBook
-		err = dbattribute.ConvertFromMap(itemAttr, &b)
+		err = dbattribute.UnmarshalMap(itemAttr, &b)
 		assert.Contains(randBooks, b)
 	}
 
@@ -245,7 +245,7 @@ func (suite *DatabaseTestSuite) TestBatchPutMultiTable() {
 	assert.Len(out.Items, len(randQuotes))
 	for _, itemAttr := range out.Items {
 		var q tQuote
-		err = dbattribute.ConvertFromMap(itemAttr, &q)
+		err = dbattribute.UnmarshalMap(itemAttr, &q)
 		assert.Contains(randQuotes, q)
 	}
 }

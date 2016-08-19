@@ -181,7 +181,7 @@ func (suite *DatabaseTestSuite) TestClearTable() {
 
 	// Add items
 	for i := 0; i < 30; i++ {
-		item, err := dbattribute.ConvertToMap(map[string]interface{}{
+		item, err := dbattribute.MarshalMap(map[string]interface{}{
 			"Hash": randString(15),
 		})
 		assert.Nil(err)

@@ -50,7 +50,7 @@ func (c *Client) GetItem(
 			return ErrNoSuchItem
 		}
 
-		err = dbattribute.ConvertFromMap(resp.Item, item)
+		err = dbattribute.UnmarshalMap(resp.Item, item)
 		if err != nil {
 			return fmt.Errorf("dynami: cannot get item (%v)", err)
 		}
@@ -96,7 +96,7 @@ func (c *Client) GetItem(
 		return ErrNoSuchItem
 	}
 
-	err = dbattribute.ConvertFromMap(resp.Items[0], item)
+	err = dbattribute.UnmarshalMap(resp.Items[0], item)
 	if err != nil {
 		return fmt.Errorf("dynami: invalid item (%v)", err)
 	}
@@ -223,7 +223,7 @@ func (b *BatchGet) Run() error {
 					vitem = vitem.Addr()
 				}
 
-				err := dbattribute.ConvertFromMap(item, vitem.Interface())
+				err := dbattribute.UnmarshalMap(item, vitem.Interface())
 				return err
 			})
 		citems = unproc

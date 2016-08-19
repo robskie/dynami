@@ -14,7 +14,7 @@ func (suite *DatabaseTestSuite) TestDelete() {
 		Author: "Frank Zappa",
 	}
 
-	item, err := dbattribute.ConvertToMap(quote)
+	item, err := dbattribute.MarshalMap(quote)
 	assert.Nil(err)
 	item = removeEmptyAttr(item)
 
@@ -48,7 +48,7 @@ func (suite *DatabaseTestSuite) TestDeleteMap() {
 		"Author": "Frank Zappa",
 	}
 
-	item, err := dbattribute.ConvertToMap(quote)
+	item, err := dbattribute.MarshalMap(quote)
 	assert.Nil(err)
 
 	sdb := suite.db
@@ -92,7 +92,7 @@ func (suite *DatabaseTestSuite) TestBatchDelete() {
 
 	sdb := suite.db
 	for _, q := range quotes {
-		item, err := dbattribute.ConvertToMap(q)
+		item, err := dbattribute.MarshalMap(q)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -138,7 +138,7 @@ func (suite *DatabaseTestSuite) TestBatchDeleteMap() {
 
 	sdb := suite.db
 	for _, q := range quotes {
-		item, err := dbattribute.ConvertToMap(q)
+		item, err := dbattribute.MarshalMap(q)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -174,7 +174,7 @@ func (suite *DatabaseTestSuite) TestBatchDeleteMultiTable() {
 
 	sdb := suite.db
 	for _, b := range randBooks {
-		item, err := dbattribute.ConvertToMap(b)
+		item, err := dbattribute.MarshalMap(b)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -194,7 +194,7 @@ func (suite *DatabaseTestSuite) TestBatchDeleteMultiTable() {
 	}
 
 	for _, q := range randQuotes {
-		item, err := dbattribute.ConvertToMap(q)
+		item, err := dbattribute.MarshalMap(q)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 

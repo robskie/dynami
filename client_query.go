@@ -316,7 +316,7 @@ func (it *ItemIterator) Next(item interface{}) error {
 	}
 
 	if item != nil {
-		err := dbattribute.ConvertFromMap(it.items[it.index], item)
+		err := dbattribute.UnmarshalMap(it.items[it.index], item)
 		if err != nil {
 			return fmt.Errorf("dynami: invalid item (%v)", err)
 		}

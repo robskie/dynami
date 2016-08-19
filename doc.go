@@ -25,11 +25,11 @@ Field Tags
 
 This package uses field tags to specify an item's primary key and secondary
 index properties. To designate a struct field as the item's primary key use
-"dbkey:keytype". "keytype" can be "hash" or "range" for hash and range
+`dbkey:"keytype"`. "keytype" can be "hash" or "range" for hash and range
 attributes respectively. For secondary index properties, use the tag
-"dbindex:type,IndexName". If the tagged property is a secondary index key, set
+`dbindex:"type,IndexName"`. If the tagged property is a secondary index key, set
 "type" to "hash" or "range". If it is a projected attribute, change "type" to
-"project". In addition to the said tags, JSON struct tags are also respected.
+"project". In addition to the said tags, `dynamodbav` tags are also supported.
 This is useful for optional and ignored attributes.
 
 Example code:
@@ -47,8 +47,8 @@ Example code:
     C string `dbindex:"range,LocalIndex"`
     D string `dbindex:"hash,GlobalIndex"`
     E string `dbindex:"project,LocalIndex,project,GlobalIndex"`
-    F string `json:"-"`
-    G string `json:",omitempty"`
+    F string `dynamodbav:"-"`
+    G string `dynamodbav:",omitempty"`
   }
 
 Note that for local secondary indices, only the range attribute is tagged as

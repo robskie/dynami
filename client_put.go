@@ -19,7 +19,7 @@ func (c *Client) PutItem(tableName string, item interface{}) error {
 	}
 
 	item = reflect.Indirect(reflect.ValueOf(item)).Interface()
-	mitem, err := dbattribute.ConvertToMap(item)
+	mitem, err := dbattribute.MarshalMap(item)
 	if err != nil {
 		return fmt.Errorf("dynami: invalid item (%v)", err)
 	}

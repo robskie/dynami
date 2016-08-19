@@ -30,7 +30,7 @@ func (suite *DatabaseTestSuite) TestGetStream() {
 	// Add new items
 	sdb := suite.db
 	for _, q := range randQuotes {
-		item, err := dbattribute.ConvertToMap(q)
+		item, err := dbattribute.MarshalMap(q)
 		assert.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
@@ -61,7 +61,7 @@ func (suite *DatabaseTestSuite) TestGetStream() {
 	// Update items
 	for i := range randQuotes {
 		randQuotes[i].Date = rand.Int63()
-		item, err := dbattribute.ConvertToMap(randQuotes[i])
+		item, err := dbattribute.MarshalMap(randQuotes[i])
 		assert.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
@@ -90,7 +90,7 @@ func (suite *DatabaseTestSuite) TestGetStream() {
 
 	// Delete items
 	for _, q := range randQuotes {
-		item, err := dbattribute.ConvertToMap(q)
+		item, err := dbattribute.MarshalMap(q)
 		assert.Nil(err)
 		delete(item, "Date")
 
@@ -137,7 +137,7 @@ func (suite *DatabaseTestSuite) TestGetStreamLive() {
 		for _, q := range randQuotes {
 			time.Sleep(200 * time.Millisecond)
 
-			item, err := dbattribute.ConvertToMap(q)
+			item, err := dbattribute.MarshalMap(q)
 			assert.Nil(err)
 
 			_, err = sdb.PutItem(&db.PutItemInput{
@@ -230,7 +230,7 @@ func (suite *DatabaseTestSuite) TestGetStreamBackCompat() {
 		Key:   "key1",
 		Value: "value1",
 	}
-	dbitem, err := dbattribute.ConvertToMap(item)
+	dbitem, err := dbattribute.MarshalMap(item)
 	assert.Nil(err)
 
 	sdb := suite.db
@@ -257,7 +257,7 @@ func (suite *DatabaseTestSuite) TestGetStreamBackCompat() {
 		Key:   "key2",
 		Value: "value2",
 	}
-	dbitem, err = dbattribute.ConvertToMap(item)
+	dbitem, err = dbattribute.MarshalMap(item)
 	assert.Nil(err)
 
 	_, err = sdb.PutItem(&db.PutItemInput{
@@ -281,7 +281,7 @@ func (suite *DatabaseTestSuite) TestGetStreamBackCompat() {
 		Key:   "key3",
 		Value: "value3",
 	}
-	dbitem, err = dbattribute.ConvertToMap(item)
+	dbitem, err = dbattribute.MarshalMap(item)
 	assert.Nil(err)
 
 	_, err = sdb.PutItem(&db.PutItemInput{

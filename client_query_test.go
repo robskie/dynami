@@ -111,7 +111,7 @@ func (suite *DatabaseTestSuite) TestQuery() {
 	sdb := suite.db
 	assert := suite.Assert()
 	for _, b := range books {
-		item, err := dbattribute.ConvertToMap(b)
+		item, err := dbattribute.MarshalMap(b)
 		assert.Nil(err)
 		item = removeEmptyAttr(item)
 
@@ -291,7 +291,7 @@ func (suite *DatabaseTestSuite) TestQueryBig() {
 			Text:   "sometext" + strconv.Itoa(i),
 		}
 
-		dbitem, err := dbattribute.ConvertToMap(q)
+		dbitem, err := dbattribute.MarshalMap(q)
 		require.Nil(err)
 
 		wreqs[i] = &db.WriteRequest{

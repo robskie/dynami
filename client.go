@@ -2,6 +2,7 @@ package dynami
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -96,18 +97,24 @@ type Client struct {
 
 // NewClient creates a new client from the given credentials.
 func NewClient(region *Region, accessKeyID string, secretAccessKey string) *Client {
-	dbSession := session.New(&aws.Config{
+	dbSession, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region.Name),
 		Endpoint:    aws.String(region.DynamoDBEndpoint),
 		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
 	})
+	if err != nil {
+		panic(fmt.Errorf("dynami: cannot create new client (%v)", err))
+	}
 	db := db.New(dbSession)
 
-	dbsSession := session.New(&aws.Config{
+	dbsSession, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region.Name),
 		Endpoint:    aws.String(region.DynamoDBStreamsEndpoint),
 		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
 	})
+	if err != nil {
+		panic(fmt.Errorf("dynami: cannot create new client (%v)", err))
+	}
 	dbs := dbs.New(dbsSession)
 
 	return &Client{db: db, dbs: dbs}
