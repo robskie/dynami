@@ -10,22 +10,22 @@ import (
 
 func TestFieldTags(t *testing.T) {
 	type tStruct struct {
-		Hash  string `dbkey:"hash" dbindex:"hash,GlobalIndexA"`
-		Range int    `dbkey:"range"`
+		Hash  string `dbkey:"hash" dbindex:"hash,GlobalIndexA" dynamodbav:"hash"`
+		Range int    `dbkey:"range" dynamodbav:"range"`
 
-		AnotherRange string `dbindex:"range,LocalIndex"`
-		GlobalHash   string `dbindex:"hash,GlobalIndexB"`
+		AnotherRange string `dbindex:"range,LocalIndex" json:"another_range"`
+		GlobalHash   string `dbindex:"hash,GlobalIndexB" json:"global_hash"`
 
-		Projected int `dbindex:"project,GlobalIndexA,project,GlobalIndexB"`
+		Projected int `dbindex:"project,GlobalIndexA,project,GlobalIndexB" json:"projected"`
 	}
 
 	s := GetSchema(tStruct{})
 
 	expectedAttrs := []Attribute{
-		{"Hash", StringType},
-		{"Range", NumberType},
-		{"AnotherRange", StringType},
-		{"GlobalHash", StringType},
+		{"hash", StringType},
+		{"range", NumberType},
+		{"another_range", StringType},
+		{"global_hash", StringType},
 	}
 	assert.Len(t, s.Attributes, len(expectedAttrs))
 	for _, attr := range expectedAttrs {
@@ -33,8 +33,8 @@ func TestFieldTags(t *testing.T) {
 	}
 
 	expectedKey := []Key{
-		{"Hash", HashKey},
-		{"Range", RangeKey},
+		{"hash", HashKey},
+		{"range", RangeKey},
 	}
 	assert.Equal(t, expectedKey, s.Key)
 
@@ -42,15 +42,15 @@ func TestFieldTags(t *testing.T) {
 		{
 			Name: "LocalIndex",
 			Key: []Key{
-				{"Hash", HashKey},
-				{"AnotherRange", RangeKey},
+				{"hash", HashKey},
+				{"another_range", RangeKey},
 			},
 			Projection: &Projection{
 				Type: ProjectInclude,
 				Include: []string{
-					"AnotherRange",
-					"Hash",
-					"Range",
+					"another_range",
+					"hash",
+					"range",
 				},
 			},
 		},
@@ -64,29 +64,29 @@ func TestFieldTags(t *testing.T) {
 		{
 			Name: "GlobalIndexA",
 			Key: []Key{
-				{"Hash", HashKey},
+				{"hash", HashKey},
 			},
 			Projection: &Projection{
 				Type: ProjectInclude,
 				Include: []string{
-					"Hash",
-					"Projected",
-					"Range",
+					"hash",
+					"projected",
+					"range",
 				},
 			},
 		},
 		{
 			Name: "GlobalIndexB",
 			Key: []Key{
-				{"GlobalHash", HashKey},
+				{"global_hash", HashKey},
 			},
 			Projection: &Projection{
 				Type: ProjectInclude,
 				Include: []string{
-					"GlobalHash",
-					"Hash",
-					"Projected",
-					"Range",
+					"global_hash",
+					"hash",
+					"projected",
+					"range",
 				},
 			},
 		},

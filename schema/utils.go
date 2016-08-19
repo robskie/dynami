@@ -53,8 +53,8 @@ func GetSchema(item interface{}) *Table {
 		// Process struct schema
 
 		// map key is the index name for
-		// the key element. Empty key means
-		// it is a primary key.
+		// the Key element. Empty map key
+		// means it is a primary key.
 		hashes := map[string]*Key{}
 		ranges := map[string]*Key{}
 		projs := map[string]map[string]bool{}
@@ -71,6 +71,16 @@ func GetSchema(item interface{}) *Table {
 			// Consider only exported fields
 			if f.PkgPath != "" {
 				continue
+			}
+
+			// Get name from dynamodbav or json tag
+			nameTag := f.Tag.Get("dynamodbav")
+			if nameTag == "" {
+				nameTag = f.Tag.Get("json")
+			}
+			tags := strings.Split(nameTag, ",")
+			if len(tags) > 0 && tags[0] != "" {
+				f.Name = tags[0]
 			}
 
 			keyTag := f.Tag.Get("dbkey")
