@@ -29,8 +29,8 @@ index properties. To designate a struct field as the item's primary key use
 attributes respectively. For secondary index properties, use the tag
 `dbindex:"type,IndexName"`. If the tagged property is a secondary index key, set
 "type" to "hash" or "range". If it is a projected attribute, change "type" to
-"project". In addition to the said tags, `dynamodbav` tags are also supported.
-This is useful for optional and ignored attributes.
+"project". In addition to the said tags, `json` and `dynamodbav` tags are also
+supported. This is useful for optional and ignored attributes.
 
 Example code:
 

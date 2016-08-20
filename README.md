@@ -6,13 +6,13 @@ In order to use this package effectively, an understanding of the underlying
 DynamoDB operations is recommended. For an introduction, click [here][2].
 
 
-[1]:https://docs.aws.amazon.com/sdk-for-go/api/service/dynamodb/DynamoDB.html
+[1]:https://docs.aws.amazon.com/sdk-for-go/api/service/dynamodb
 [2]:https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html
 
 
 ## Installation
 ```sh
-go get github.com/robskie/dynami
+go get -u github.com/robskie/dynami
 ```
 
 ## Examples
@@ -81,6 +81,12 @@ curl -O -L http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_loc
 mkdir DynamoDBLocal
 tar -xzf dynamodb_local_latest.tar.gz -C DynamoDBLocal
 rm dynamodb_local_latest.tar.gz
+```
+
+You'll also need to install the test dependencies through this command.
+
+```sh
+go get -t github.com/robskie/dynami
 ```
 
 Now you can run the tests by typing `go test -v github.com/robskie/dynami` in
