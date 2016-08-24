@@ -1,6 +1,9 @@
 package dynami
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -8,6 +11,7 @@ import (
 
 func (suite *DatabaseTestSuite) TestPut() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	origBook := tBook{
 		Title:  "The Pillars of the Earth",
@@ -17,7 +21,7 @@ func (suite *DatabaseTestSuite) TestPut() {
 
 	c := suite.client
 	err := c.PutItem("Book", origBook)
-	assert.Nil(err)
+	require.Nil(err)
 
 	actualBook := tBook{
 		Title:  origBook.Title,
@@ -25,7 +29,7 @@ func (suite *DatabaseTestSuite) TestPut() {
 	}
 
 	attrs, err := dbattribute.MarshalMap(actualBook)
-	assert.Nil(err)
+	require.Nil(err)
 
 	sdb := suite.db
 	out, err := sdb.GetItem(&db.GetItemInput{
@@ -36,15 +40,16 @@ func (suite *DatabaseTestSuite) TestPut() {
 		TableName:      aws.String("Book"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	err = dbattribute.UnmarshalMap(out.Item, &actualBook)
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal(origBook, actualBook)
 }
 
 func (suite *DatabaseTestSuite) TestPutMap() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	origBook := map[string]interface{}{
 		"Title":  "The Pillars of the Earth",
@@ -54,7 +59,7 @@ func (suite *DatabaseTestSuite) TestPutMap() {
 
 	c := suite.client
 	err := c.PutItem("Book", origBook)
-	assert.Nil(err)
+	require.Nil(err)
 
 	actualBook := map[string]interface{}{
 		"Title":  origBook["Title"],
@@ -62,7 +67,7 @@ func (suite *DatabaseTestSuite) TestPutMap() {
 	}
 
 	attrs, err := dbattribute.MarshalMap(actualBook)
-	assert.Nil(err)
+	require.Nil(err)
 
 	sdb := suite.db
 	out, err := sdb.GetItem(&db.GetItemInput{
@@ -73,15 +78,16 @@ func (suite *DatabaseTestSuite) TestPutMap() {
 		TableName:      aws.String("Book"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	err = dbattribute.UnmarshalMap(out.Item, &actualBook)
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal(origBook, actualBook)
 }
 
 func (suite *DatabaseTestSuite) TestBatchPut() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	books := []tBook{
 		{
@@ -110,7 +116,7 @@ func (suite *DatabaseTestSuite) TestBatchPut() {
 
 	c := suite.client
 	err := c.BatchPut("Book", books).Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	expected := []tBook{
 		books[1],
@@ -123,9 +129,9 @@ func (suite *DatabaseTestSuite) TestBatchPut() {
 		TableName:      aws.String("Book"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
-	assert.Len(out.Items, len(expected))
+	require.Len(out.Items, len(expected))
 	for _, itemAttr := range out.Items {
 		var b tBook
 		err = dbattribute.UnmarshalMap(itemAttr, &b)
@@ -153,6 +159,7 @@ func (suite *DatabaseTestSuite) TestBatchPut() {
 
 func (suite *DatabaseTestSuite) TestBatchPutMap() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	books := []map[string]interface{}{
 		{
@@ -174,7 +181,7 @@ func (suite *DatabaseTestSuite) TestBatchPutMap() {
 
 	c := suite.client
 	err := c.BatchPut("Book", books).Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	expected := []map[string]interface{}{
 		books[0],
@@ -187,9 +194,9 @@ func (suite *DatabaseTestSuite) TestBatchPutMap() {
 		TableName:      aws.String("Book"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
-	assert.Len(out.Items, len(expected))
+	require.Len(out.Items, len(expected))
 	for _, itemAttr := range out.Items {
 		var b map[string]interface{}
 		err = dbattribute.UnmarshalMap(itemAttr, &b)
@@ -198,9 +205,14 @@ func (suite *DatabaseTestSuite) TestBatchPutMap() {
 }
 
 func (suite *DatabaseTestSuite) TestBatchPutMultiTable() {
-	assert := suite.Assert()
+	if testing.Short() {
+		suite.T().SkipNow()
+	}
 
-	randBooks := make([]tBook, 100)
+	assert := suite.Assert()
+	require := suite.Require()
+
+	randBooks := make([]tBook, 50)
 	for i := range randBooks {
 		randBooks[i] = tBook{
 			Title:  randString(20),
@@ -208,7 +220,7 @@ func (suite *DatabaseTestSuite) TestBatchPutMultiTable() {
 		}
 	}
 
-	randQuotes := make([]tQuote, 30)
+	randQuotes := make([]tQuote, 150)
 	for i := range randQuotes {
 		randQuotes[i] = tQuote{
 			Author: randString(15),
@@ -216,36 +228,49 @@ func (suite *DatabaseTestSuite) TestBatchPutMultiTable() {
 		}
 	}
 
+	fmt.Printf("\rAdding items...")
+
 	c := suite.client
 	err := c.BatchPut("Book", randBooks).
 		Put("Quote", randQuotes).
 		Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	sdb := suite.db
 	out, err := sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("Book"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
-	assert.Len(out.Items, len(randBooks))
+	count := 0
+	nitems := len(randBooks) + len(randQuotes)
+
+	require.Len(out.Items, len(randBooks))
 	for _, itemAttr := range out.Items {
 		var b tBook
 		err = dbattribute.UnmarshalMap(itemAttr, &b)
 		assert.Contains(randBooks, b)
+
+		count++
+		fmt.Printf("\rChecking items (%d/%d)", count, nitems)
 	}
 
 	out, err = sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("Quote"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
-	assert.Len(out.Items, len(randQuotes))
+	require.Len(out.Items, len(randQuotes))
 	for _, itemAttr := range out.Items {
 		var q tQuote
 		err = dbattribute.UnmarshalMap(itemAttr, &q)
 		assert.Contains(randQuotes, q)
+
+		count++
+		fmt.Printf("\rChecking items (%d/%d)", count, nitems)
 	}
+
+	fmt.Println("\rTest finished. Cleaning up...")
 }

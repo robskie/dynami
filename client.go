@@ -89,6 +89,30 @@ var (
 	}
 )
 
+var regions = map[string]*Region{
+	"us-east-1":      USEast1,
+	"us-west-1":      USWest1,
+	"us-west-2":      USWest2,
+	"eu-west-1":      EUWest1,
+	"eu-central-1":   EUCentral1,
+	"ap-northeast-1": APNortheast1,
+	"ap-northeast-2": APNortheast2,
+	"ap-southeast-1": APSoutheast1,
+	"ap-southeast-2": APSoutheast2,
+	"sa-east-1":      SAEast1,
+}
+
+// GetRegion returns a new Region object
+// given a valid AWS region, eg. "us-east-1".
+func GetRegion(name string) *Region {
+	reg, ok := regions[name]
+	if !ok {
+		panic(fmt.Errorf("dynami: unknown region (%v)", name))
+	}
+
+	return reg
+}
+
 // Client represents a DynamoDB client.
 type Client struct {
 	db  *db.DynamoDB

@@ -72,8 +72,15 @@ Godoc documentation can be found [here][3].
 
 ## Tests
 
-To run the tests, DynamoDB Local must be installed in your home directory. To
-download and install DynamoDB Local, execute the following commands in terminal:
+Before running the tests, install all the test dependencies first.
+
+```sh
+go get -t github.com/robskie/dynami
+```
+
+Tests can be run locally or online. To run the tests locally, DynamoDB Local 
+must be installed in your home directory. You can download and install DynamoDB 
+Local through these commands:
 
 ```sh
 cd ~
@@ -82,12 +89,17 @@ mkdir DynamoDBLocal
 tar -xzf dynamodb_local_latest.tar.gz -C DynamoDBLocal
 rm dynamodb_local_latest.tar.gz
 ```
-
-You'll also need to install the test dependencies through this command.
+Now you can execute the tests locally via this command:
 
 ```sh
-go get -t github.com/robskie/dynami
+go test -v github.com/robskie/dynami
 ```
 
-Now you can run the tests by typing `go test -v github.com/robskie/dynami` in
-terminal.
+Or you can run them online by adding an `online` flag as shown in the following 
+command. This will create test tables in the region set in `DYNAMI_TEST_REGION` 
+environment variable. Note that these tests can take more than 30 minutes to 
+finish.
+
+```sh
+DYNAMI_TEST_REGION=us-west-1 go test github.com/robskie/dynami -v -online -timeout 1h
+```

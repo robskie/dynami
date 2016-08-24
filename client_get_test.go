@@ -1,7 +1,9 @@
 package dynami
 
 import (
+	"fmt"
 	"math/rand"
+	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
@@ -10,6 +12,7 @@ import (
 
 func (suite *DatabaseTestSuite) TestGet() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	book := tBook{
 		Title:  "All the King’s Men",
@@ -17,8 +20,7 @@ func (suite *DatabaseTestSuite) TestGet() {
 		Genre:  "Fiction",
 	}
 	item, err := dbattribute.MarshalMap(book)
-	assert.Nil(err)
-	item = removeEmptyAttr(item)
+	require.Nil(err)
 
 	sdb := suite.db
 	sdb.PutItem(&db.PutItemInput{
@@ -35,7 +37,7 @@ func (suite *DatabaseTestSuite) TestGet() {
 	c := suite.client
 	consistent := true
 	err = c.GetItem("Book", &bookA, consistent)
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal(book, bookA)
 
 	// Fetch by secondary key
@@ -45,12 +47,13 @@ func (suite *DatabaseTestSuite) TestGet() {
 	}
 
 	err = c.GetItem("Book", &bookB, consistent)
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal(book, bookB)
 }
 
 func (suite *DatabaseTestSuite) TestGetMap() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	book := tBook{
 		Title:  "All the King’s Men",
@@ -58,8 +61,7 @@ func (suite *DatabaseTestSuite) TestGetMap() {
 		Genre:  "Fiction",
 	}
 	item, err := dbattribute.MarshalMap(book)
-	assert.Nil(err)
-	item = removeEmptyAttr(item)
+	require.Nil(err)
 
 	sdb := suite.db
 	sdb.PutItem(&db.PutItemInput{
@@ -68,20 +70,21 @@ func (suite *DatabaseTestSuite) TestGetMap() {
 	})
 
 	// Fetch using map
-	bookC := map[string]interface{}{
+	fbook := map[string]interface{}{
 		"Title":  book.Title,
 		"Author": book.Author,
 	}
 
 	c := suite.client
 	consistent := true
-	err = c.GetItem("Book", &bookC, consistent)
-	assert.Nil(err)
-	assert.Equal(book.Genre, bookC["Genre"])
+	err = c.GetItem("Book", &fbook, consistent)
+	require.Nil(err)
+	assert.Equal(book.Genre, fbook["Genre"])
 }
 
 func (suite *DatabaseTestSuite) TestBatchGet() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	origBooks := []tBook{
 		{
@@ -104,14 +107,13 @@ func (suite *DatabaseTestSuite) TestBatchGet() {
 	sdb := suite.db
 	for _, b := range origBooks {
 		item, err := dbattribute.MarshalMap(b)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
+		require.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Book"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
 	}
 
 	fetchedBooks := make([]tBook, len(origBooks))
@@ -128,7 +130,7 @@ func (suite *DatabaseTestSuite) TestBatchGet() {
 	c := suite.client
 	consistent := true
 	err := c.BatchGet("Book", fetchedBooks, consistent).Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	for _, b := range fetchedBooks {
 		assert.Contains(origBooks, b)
@@ -140,19 +142,17 @@ func (suite *DatabaseTestSuite) TestBatchGet() {
 		Author: randString(15),
 	})
 	err = c.BatchGet("Book", fetchedBooks, consistent).Run()
-	assert.NotNil(err)
+	require.NotNil(err)
 
 	batchErr, ok := err.(BatchError)
-	assert.True(ok)
-	if ok {
-		berr := batchErr["Book"][len(fetchedBooks)-1]
-		assert.Equal(ErrNoSuchItem, berr)
-	}
-
+	require.True(ok)
+	berr := batchErr["Book"][len(fetchedBooks)-1]
+	assert.Equal(ErrNoSuchItem, berr)
 }
 
 func (suite *DatabaseTestSuite) TestBatchGetMap() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	origBooks := []tBook{
 		{
@@ -175,14 +175,13 @@ func (suite *DatabaseTestSuite) TestBatchGetMap() {
 	sdb := suite.db
 	for _, b := range origBooks {
 		item, err := dbattribute.MarshalMap(b)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
+		require.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Book"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
 	}
 
 	// Fetch using map keys
@@ -197,7 +196,7 @@ func (suite *DatabaseTestSuite) TestBatchGetMap() {
 	c := suite.client
 	consistent := true
 	err := c.BatchGet("Book", fetchedBooks, consistent).Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	for i, b := range origBooks {
 		assert.Equal(b.Genre, fetchedBooks[i]["Genre"])
@@ -205,9 +204,14 @@ func (suite *DatabaseTestSuite) TestBatchGetMap() {
 }
 
 func (suite *DatabaseTestSuite) TestBatchGetMultiTable() {
-	assert := suite.Assert()
+	if testing.Short() {
+		suite.T().SkipNow()
+	}
 
-	randBooks := make([]tBook, 200)
+	assert := suite.Assert()
+	require := suite.Require()
+
+	randBooks := make([]tBook, 50)
 	fetchedBooks := make([]tBook, len(randBooks))
 	for i := range randBooks {
 		b := tBook{
@@ -221,19 +225,6 @@ func (suite *DatabaseTestSuite) TestBatchGetMultiTable() {
 			Title:  b.Title,
 			Author: b.Author,
 		}
-	}
-
-	sdb := suite.db
-	for _, b := range randBooks {
-		item, err := dbattribute.MarshalMap(b)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
-
-		_, err = sdb.PutItem(&db.PutItemInput{
-			Item:      item,
-			TableName: aws.String("Book"),
-		})
-		assert.Nil(err)
 	}
 
 	randQuotes := make([]tQuote, 150)
@@ -252,87 +243,105 @@ func (suite *DatabaseTestSuite) TestBatchGetMultiTable() {
 		}
 	}
 
+	count := 0
+	nitems := len(randBooks) + len(randQuotes)
+
+	sdb := suite.db
+	for _, b := range randBooks {
+		item, err := dbattribute.MarshalMap(b)
+		require.Nil(err)
+
+		_, err = sdb.PutItem(&db.PutItemInput{
+			Item:      item,
+			TableName: aws.String("Book"),
+		})
+		require.Nil(err)
+
+		count++
+		fmt.Printf("\rAdding items (%d/%d)", count, nitems)
+	}
+
 	for _, q := range randQuotes {
 		item, err := dbattribute.MarshalMap(q)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
+		require.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Quote"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
+
+		count++
+		fmt.Printf("\rAdding items (%d/%d)", count, nitems)
 	}
+
+	fmt.Printf("\rFetching items...      ")
 
 	c := suite.client
 	consistent := true
 	err := c.BatchGet("Book", fetchedBooks, consistent).
 		Get("Quote", fetchedQuotes, consistent).
 		Run()
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal(randBooks, fetchedBooks)
 	assert.Equal(randQuotes, fetchedQuotes)
+
+	fmt.Println("\rTest finished. Cleaning up...")
 }
 
 func (suite *DatabaseTestSuite) TestBatchGetBig() {
+	if testing.Short() {
+		suite.T().SkipNow()
+	}
+
 	assert := suite.Assert()
 	require := suite.Require()
 
-	nitems := 150
+	nitems := 10
 	itemSize := 300 << 10
 	bigText := randString(itemSize)
 
-	books := make([]tBook, nitems)
-	for i := range books {
-		books[i] = tBook{
-			Title:  randString(20),
+	quotes := make([]tQuote, nitems)
+	for i := range quotes {
+		quotes[i] = tQuote{
 			Author: randString(15),
-			Genre:  randString(10),
-			Info: tInfo{
-				Publisher: bigText,
-			},
+			Text:   randString(100),
+			Topic:  bigText,
+			Date:   rand.Int63(),
 		}
 	}
 
-	// Create write requests
-	wreqs := make([]*db.WriteRequest, nitems)
-	for i, b := range books {
-		dbitem, err := dbattribute.MarshalMap(b)
+	count := 0
+	sdb := suite.db
+	for _, q := range quotes {
+		item, err := dbattribute.MarshalMap(q)
 		require.Nil(err)
 
-		wreqs[i] = &db.WriteRequest{
-			PutRequest: &db.PutRequest{
-				Item: dbitem,
-			},
-		}
-	}
-
-	// Write items
-	nputsPerOp := 25
-	sdb := suite.db
-	unprocs := wreqs
-	for len(unprocs) > 0 {
-		_, err := sdb.BatchWriteItem(&db.BatchWriteItemInput{
-			RequestItems: map[string][]*db.WriteRequest{
-				"Book": unprocs[:min(nputsPerOp, len(unprocs))],
-			},
+		_, err = sdb.PutItem(&db.PutItemInput{
+			Item:      item,
+			TableName: aws.String("Quote"),
 		})
 		require.Nil(err)
 
-		unprocs = unprocs[min(nputsPerOp, len(unprocs)):]
+		count++
+		fmt.Printf("\rAdding items (%d/%d)", count, len(quotes))
 	}
 
-	fetchedBooks := make([]tBook, nitems)
-	for i, b := range books {
-		fetchedBooks[i] = tBook{
-			Title:  b.Title,
-			Author: b.Author,
+	fetchedQuotes := make([]tQuote, nitems)
+	for i, q := range quotes {
+		fetchedQuotes[i] = tQuote{
+			Author: q.Author,
+			Text:   q.Text,
 		}
 	}
 
+	fmt.Printf("\rFetching items...      ")
+
 	c := suite.client
 	consistent := true
-	err := c.BatchGet("Book", fetchedBooks, consistent).Run()
-	assert.Nil(err)
-	assert.Equal(books, fetchedBooks)
+	err := c.BatchGet("Quote", fetchedQuotes, consistent).Run()
+	require.Nil(err)
+	assert.Equal(quotes, fetchedQuotes)
+
+	fmt.Println("\rTest finished. Cleaning up...")
 }

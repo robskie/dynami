@@ -1,7 +1,9 @@
 package dynami
 
 import (
-	"strconv"
+	"fmt"
+	"math/rand"
+	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
@@ -9,6 +11,9 @@ import (
 )
 
 func (suite *DatabaseTestSuite) TestQuery() {
+	assert := suite.Assert()
+	require := suite.Require()
+
 	books := []tBook{
 		{
 			Title:  "Harry Potter and the Goblet of Fire",
@@ -109,17 +114,16 @@ func (suite *DatabaseTestSuite) TestQuery() {
 	}
 
 	sdb := suite.db
-	assert := suite.Assert()
 	for _, b := range books {
 		item, err := dbattribute.MarshalMap(b)
-		assert.Nil(err)
+		require.Nil(err)
 		item = removeEmptyAttr(item)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Book"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
 	}
 
 	tests := []struct {
@@ -268,7 +272,7 @@ func (suite *DatabaseTestSuite) TestQuery() {
 		for it.HasNext() {
 			var book tBook
 			err := it.Next(&book)
-			assert.Nil(err)
+			require.Nil(err)
 			assert.Contains(tc.expected, book)
 
 			nout++
@@ -278,68 +282,84 @@ func (suite *DatabaseTestSuite) TestQuery() {
 }
 
 func (suite *DatabaseTestSuite) TestQueryBig() {
-	itemSize := 1 << 10
-	nitems := (5 << 20) / itemSize
+	if testing.Short() {
+		suite.T().SkipNow()
+	}
 
-	// Create write requests
+	assert := suite.Assert()
 	require := suite.Require()
+
+	itemSize := 10 << 10
+	nitems := (1 << 20) / itemSize
+
 	bigText := randString(itemSize)
-	wreqs := make([]*db.WriteRequest, nitems)
-	for i := range wreqs {
-		q := tQuote{
-			Author: bigText,
-			Text:   "sometext" + strconv.Itoa(i),
-		}
-
-		dbitem, err := dbattribute.MarshalMap(q)
-		require.Nil(err)
-
-		wreqs[i] = &db.WriteRequest{
-			PutRequest: &db.PutRequest{
-				Item: dbitem,
-			},
+	quotes := make([]tQuote, nitems)
+	for i := range quotes {
+		quotes[i] = tQuote{
+			Author: "some famous author",
+			Text:   randString(30),
+			Topic:  bigText,
+			Date:   rand.Int63(),
 		}
 	}
 
-	// Write items
-	nputsPerOp := 25
 	sdb := suite.db
-	unprocs := wreqs
-	for len(unprocs) > 0 {
-		_, err := sdb.BatchWriteItem(&db.BatchWriteItemInput{
-			RequestItems: map[string][]*db.WriteRequest{
-				"Quote": unprocs[:min(nputsPerOp, len(unprocs))],
-			},
+	count := 0
+	for _, q := range quotes {
+		item, err := dbattribute.MarshalMap(q)
+		require.Nil(err)
+
+		_, err = sdb.PutItem(&db.PutItemInput{
+			Item:      item,
+			TableName: aws.String("Quote"),
 		})
 		require.Nil(err)
-		unprocs = unprocs[min(nputsPerOp, len(unprocs)):]
+
+		count++
+		fmt.Printf("\rAdding items (%d/%d)", count, nitems)
 	}
+
+	fmt.Printf("\rQuerying items...      ")
 
 	// Test query
 	c := suite.client
-
 	it := c.Query("Quote").
-		HashFilter("Author", bigText).
+		HashFilter("Author", "some famous author").
 		Consistent().
 		Run()
 
-	nres := 0
-	assert := suite.Assert()
+	qout := []tQuote{}
 	for it.HasNext() {
-		it.Next(nil)
-		nres++
+		var q tQuote
+		err := it.Next(&q)
+		require.Nil(err)
+
+		qout = append(qout, q)
 	}
-	assert.Equal(nitems, nres)
+	assert.Len(qout, len(quotes))
+	for _, q := range quotes {
+		require.Contains(qout, q)
+	}
+
+	fmt.Printf("\rScanning items...")
 
 	// Test scan
 	it = c.Query("Quote").
 		Consistent().
 		Run()
 
-	nres = 0
+	sout := []tQuote{}
 	for it.HasNext() {
-		it.Next(nil)
-		nres++
+		var q tQuote
+		err := it.Next(&q)
+		require.Nil(err)
+
+		sout = append(sout, q)
 	}
-	assert.Equal(nitems, nres)
+	assert.Len(sout, len(quotes))
+	for _, q := range quotes {
+		require.Contains(sout, q)
+	}
+
+	fmt.Println("\rTest finished. Cleaning up...")
 }

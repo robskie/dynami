@@ -1,21 +1,56 @@
 package dynami
 
 import (
+	"strconv"
+	"testing"
+
 	sc "github.com/robskie/dynami/schema"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
+func assertEqualIndices(
+	t *testing.T,
+	expected []sc.SecondaryIndex,
+	actual []sc.SecondaryIndex) {
+
+	require.Len(t, actual, len(expected))
+	aidxs := make(map[string]*sc.SecondaryIndex, len(actual))
+	for i, idx := range actual {
+		aidxs[idx.Name] = &actual[i]
+	}
+
+	for _, idx := range expected {
+		aidx := aidxs[idx.Name]
+		require.NotNil(t, aidx)
+
+		assert.Equal(t, idx.Key, aidx.Key)
+		assert.Equal(t, idx.Throughput, aidx.Throughput)
+
+		assert.Equal(t, idx.Size(), aidx.Size())
+		assert.Equal(t, idx.ItemCount(), aidx.ItemCount())
+		assert.Equal(t, idx.Status(), aidx.Status())
+
+		assert.Equal(t, idx.Projection.Type, aidx.Projection.Type)
+		for _, inc := range idx.Projection.Include {
+			assert.Contains(t, aidx.Projection.Include, inc)
+		}
+	}
+}
+
 func (suite *DatabaseTestSuite) TestCreateTable() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	table := &sc.Table{
 		Name: "TestTable",
 		Throughput: &sc.Throughput{
 			Read:  1,
-			Write: 2,
+			Write: 1,
 		},
 		Attributes: []sc.Attribute{
 			{"Hash", sc.StringType},
@@ -49,8 +84,8 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 					},
 				},
 				Throughput: &sc.Throughput{
-					Read:  3,
-					Write: 4,
+					Read:  1,
+					Write: 1,
 				},
 				Projection: &sc.Projection{
 					Type: sc.ProjectInclude,
@@ -70,13 +105,13 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 
 	c := suite.client
 	err := c.CreateTable(table)
-	assert.Nil(err)
+	require.Nil(err)
 
 	sdb := suite.db
 	resp, err := sdb.DescribeTable(&db.DescribeTableInput{
 		TableName: aws.String(table.Name),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	desc := resp.Table
 	assert.Equal(aws.String(db.TableStatusActive), desc.TableStatus)
@@ -86,17 +121,19 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 	assert.Equal(table.Throughput, throughput(desc.ProvisionedThroughput))
 	assert.Equal(table.Key, keySchema(desc.KeySchema))
 
-	assert.Equal(
-		table.Attributes,
-		attributeDefinitions(desc.AttributeDefinitions),
-	)
+	attributeDefs := attributeDefinitions(desc.AttributeDefinitions)
+	for _, attr := range table.Attributes {
+		assert.Contains(attributeDefs, attr)
+	}
 
-	assert.Equal(
+	assertEqualIndices(
+		suite.T(),
 		table.LocalSecondaryIndexes,
 		secondaryIndexes(desc.LocalSecondaryIndexes),
 	)
 
-	assert.Equal(
+	assertEqualIndices(
+		suite.T(),
 		table.GlobalSecondaryIndexes,
 		secondaryIndexes(desc.GlobalSecondaryIndexes),
 	)
@@ -109,6 +146,7 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 
 func (suite *DatabaseTestSuite) TestDeleteTable() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	sdb := suite.db
 	_, err := sdb.CreateTable(&db.CreateTableInput{
@@ -120,8 +158,8 @@ func (suite *DatabaseTestSuite) TestDeleteTable() {
 			},
 		},
 		ProvisionedThroughput: &db.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(10),
-			WriteCapacityUnits: aws.Int64(10),
+			ReadCapacityUnits:  aws.Int64(1),
+			WriteCapacityUnits: aws.Int64(1),
 		},
 		KeySchema: []*db.KeySchemaElement{
 			&db.KeySchemaElement{
@@ -130,22 +168,22 @@ func (suite *DatabaseTestSuite) TestDeleteTable() {
 			},
 		},
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	err = sdb.WaitUntilTableExists(&db.DescribeTableInput{
 		TableName: aws.String("TestTable"),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	resp, err := sdb.DescribeTable(&db.DescribeTableInput{
 		TableName: aws.String("TestTable"),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal(aws.String(db.TableStatusActive), resp.Table.TableStatus)
 
 	c := suite.client
 	_, err = c.DeleteTable("TestTable")
-	assert.Nil(err)
+	require.Nil(err)
 
 	_, err = sdb.DescribeTable(&db.DescribeTableInput{
 		TableName: aws.String("TestTable"),
@@ -155,6 +193,7 @@ func (suite *DatabaseTestSuite) TestDeleteTable() {
 
 func (suite *DatabaseTestSuite) TestClearTable() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	// Create table
 	sdb := suite.db
@@ -167,8 +206,8 @@ func (suite *DatabaseTestSuite) TestClearTable() {
 			},
 		},
 		ProvisionedThroughput: &db.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(10),
-			WriteCapacityUnits: aws.Int64(10),
+			ReadCapacityUnits:  aws.Int64(3),
+			WriteCapacityUnits: aws.Int64(3),
 		},
 		KeySchema: []*db.KeySchemaElement{
 			&db.KeySchemaElement{
@@ -177,10 +216,15 @@ func (suite *DatabaseTestSuite) TestClearTable() {
 			},
 		},
 	})
-	assert.Nil(err)
+	require.Nil(err)
+
+	err = sdb.WaitUntilTableExists(&db.DescribeTableInput{
+		TableName: aws.String("TestTable"),
+	})
+	require.Nil(err)
 
 	// Add items
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 		item, err := dbattribute.MarshalMap(map[string]interface{}{
 			"Hash": randString(15),
 		})
@@ -190,25 +234,26 @@ func (suite *DatabaseTestSuite) TestClearTable() {
 			TableName: aws.String("TestTable"),
 			Item:      item,
 		})
-		assert.Nil(err)
+		require.Nil(err)
 	}
 
 	// Clear table
 	c := suite.client
 	err = c.ClearTable("TestTable")
-	assert.Nil(err)
+	require.Nil(err)
 
 	// Check if table is cleared
 	resp, err := sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("TestTable"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Len(resp.Items, 0)
 }
 
 func (suite *DatabaseTestSuite) TestDescribeTable() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	// Create table
 	sdb := suite.db
@@ -233,8 +278,8 @@ func (suite *DatabaseTestSuite) TestDescribeTable() {
 			},
 		},
 		ProvisionedThroughput: &db.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(10),
-			WriteCapacityUnits: aws.Int64(20),
+			ReadCapacityUnits:  aws.Int64(1),
+			WriteCapacityUnits: aws.Int64(1),
 		},
 		KeySchema: []*db.KeySchemaElement{
 			&db.KeySchemaElement{
@@ -283,36 +328,49 @@ func (suite *DatabaseTestSuite) TestDescribeTable() {
 					},
 				},
 				ProvisionedThroughput: &db.ProvisionedThroughput{
-					ReadCapacityUnits:  aws.Int64(30),
-					WriteCapacityUnits: aws.Int64(40),
+					ReadCapacityUnits:  aws.Int64(2),
+					WriteCapacityUnits: aws.Int64(2),
 				},
 			},
 		},
+		StreamSpecification: &db.StreamSpecification{
+			StreamEnabled:  aws.Bool(true),
+			StreamViewType: aws.String(db.StreamViewTypeNewAndOldImages),
+		},
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	desc := resp.TableDescription
+	desc.TableStatus = aws.String(string(sc.ActiveStatus))
+	desc.GlobalSecondaryIndexes[0].IndexStatus = aws.String(string(sc.ActiveStatus))
+
+	err = sdb.WaitUntilTableExists(&db.DescribeTableInput{
+		TableName: aws.String("TestTable"),
+	})
+	require.Nil(err)
 
 	// Describe table
 	c := suite.client
 	table, err := c.DescribeTable("TestTable")
-	assert.Nil(err)
+	require.Nil(err)
 
 	// Check returned table
 	assert.Equal(*desc.TableName, table.Name)
 	assert.Equal(throughput(desc.ProvisionedThroughput), table.Throughput)
 	assert.Equal(keySchema(desc.KeySchema), table.Key)
 
-	assert.Equal(
-		attributeDefinitions(desc.AttributeDefinitions),
-		table.Attributes,
-	)
+	attributeDefs := attributeDefinitions(desc.AttributeDefinitions)
+	for _, attr := range attributeDefs {
+		assert.Contains(table.Attributes, attr)
+	}
 
-	assert.Equal(
+	assertEqualIndices(
+		suite.T(),
 		secondaryIndexes(desc.LocalSecondaryIndexes),
 		table.LocalSecondaryIndexes,
 	)
 
-	assert.Equal(
+	assertEqualIndices(
+		suite.T(),
 		secondaryIndexes(desc.GlobalSecondaryIndexes),
 		table.GlobalSecondaryIndexes,
 	)
@@ -321,17 +379,19 @@ func (suite *DatabaseTestSuite) TestDescribeTable() {
 		streamEnabled(desc.StreamSpecification),
 		table.StreamEnabled,
 	)
+
+	assert.EqualValues(*desc.TableSizeBytes, table.Size())
+	assert.EqualValues(*desc.ItemCount, table.ItemCount())
+	assert.EqualValues(*desc.TableStatus, table.Status())
 }
 
 func (suite *DatabaseTestSuite) TestListTable() {
 	assert := suite.Assert()
+	require := suite.Require()
 
-	// Clear tables first
-	suite.deleteTables()
-
-	tables := make([]string, 101)
+	tables := make([]string, 5)
 	for i := range tables {
-		tables[i] = randString(15)
+		tables[i] = "TestTable" + strconv.Itoa(i+1)
 	}
 
 	sdb := suite.db
@@ -345,8 +405,8 @@ func (suite *DatabaseTestSuite) TestListTable() {
 				},
 			},
 			ProvisionedThroughput: &db.ProvisionedThroughput{
-				ReadCapacityUnits:  aws.Int64(10),
-				WriteCapacityUnits: aws.Int64(10),
+				ReadCapacityUnits:  aws.Int64(1),
+				WriteCapacityUnits: aws.Int64(1),
 			},
 			KeySchema: []*db.KeySchemaElement{
 				&db.KeySchemaElement{
@@ -355,20 +415,28 @@ func (suite *DatabaseTestSuite) TestListTable() {
 				},
 			},
 		})
-		assert.Nil(err)
+		require.Nil(err)
+
+		err = sdb.WaitUntilTableExists(&db.DescribeTableInput{
+			TableName: aws.String(tableName),
+		})
+		require.Nil(err)
 	}
 
 	c := suite.client
 	actualTables, err := c.ListTables()
-	assert.Nil(err)
+	require.Nil(err)
 
-	assert.Len(actualTables, len(tables))
-	for _, t := range actualTables {
-		assert.Contains(tables, t)
+	for _, t := range tables {
+		assert.Contains(actualTables, t)
 	}
 }
 
 func (suite *DatabaseTestSuite) TestUpdateTable() {
+	if testing.Short() {
+		suite.T().SkipNow()
+	}
+
 	assert := suite.Assert()
 	require := suite.Require()
 
@@ -391,14 +459,10 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 				Name: "GlobalHashB",
 				Type: sc.StringType,
 			},
-			{
-				Name: "GlobalHashC",
-				Type: sc.NumberType,
-			},
 		},
 		Throughput: &sc.Throughput{
-			Read:  10,
-			Write: 20,
+			Read:  1,
+			Write: 1,
 		},
 		Key: []sc.Key{
 			{
@@ -423,8 +487,8 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 					Type: sc.ProjectKeysOnly,
 				},
 				Throughput: &sc.Throughput{
-					Read:  20,
-					Write: 30,
+					Read:  2,
+					Write: 2,
 				},
 			},
 			{
@@ -439,24 +503,8 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 					Type: sc.ProjectKeysOnly,
 				},
 				Throughput: &sc.Throughput{
-					Read:  30,
-					Write: 40,
-				},
-			},
-			{
-				Name: "GlobalIndexC",
-				Key: []sc.Key{
-					{
-						Name: "GlobalHashC",
-						Type: sc.HashKey,
-					},
-				},
-				Projection: &sc.Projection{
-					Type: sc.ProjectAll,
-				},
-				Throughput: &sc.Throughput{
-					Read:  40,
-					Write: 50,
+					Read:  2,
+					Write: 2,
 				},
 			},
 		},
@@ -473,14 +521,13 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	})
 	require.Nil(err)
 
+	err = sdb.WaitUntilTableExists(&db.DescribeTableInput{
+		TableName: aws.String("TestTable"),
+	})
+	require.Nil(err)
+
 	// Enable stream
 	table.StreamEnabled = true
-
-	// Update table throughput
-	table.Throughput = &sc.Throughput{
-		Read:  42,
-		Write: 52,
-	}
 
 	// Remove GlobalIndexA
 	table.RemoveGlobalSecondaryIndex("GlobalIndexA")
@@ -488,27 +535,18 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	// Update GlobalIndexB
 	idxB := table.GetGlobalSecondaryIndex("GlobalIndexB")
 	idxB.Throughput = &sc.Throughput{
-		Read:  50,
-		Write: 60,
+		Read:  1,
+		Write: 1,
 	}
 	idxB.PStatus = sc.ActiveStatus
 	table.AddGlobalSecondaryIndex(idxB)
 
-	// Update GlobalIndexC
-	idxC := table.GetGlobalSecondaryIndex("GlobalIndexC")
-	idxC.Throughput = &sc.Throughput{
-		Read:  60,
-		Write: 70,
-	}
-	idxC.PStatus = sc.ActiveStatus
-	table.AddGlobalSecondaryIndex(idxC)
-
-	// Add GlobalIndexD
-	idxD := &sc.SecondaryIndex{
-		Name: "GlobalIndexD",
+	// Add GlobalIndexC
+	idxC := &sc.SecondaryIndex{
+		Name: "GlobalIndexC",
 		Key: []sc.Key{
 			{
-				Name: "GlobalHashD",
+				Name: "GlobalHashC",
 				Type: sc.HashKey,
 			},
 		},
@@ -516,28 +554,34 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 			Type: sc.ProjectAll,
 		},
 		Throughput: &sc.Throughput{
-			Read:  70,
-			Write: 80,
+			Read:  1,
+			Write: 1,
 		},
 	}
-	idxD.PStatus = sc.ActiveStatus
-	table.AddGlobalSecondaryIndex(idxD)
+	idxC.PStatus = sc.ActiveStatus
+	table.AddGlobalSecondaryIndex(idxC)
 	table.AddAttributes([]sc.Attribute{
 		{
-			Name: "GlobalHashD",
+			Name: "GlobalHashC",
 			Type: sc.NumberType,
 		},
 	})
 
+	// Update table throughput
+	table.Throughput = &sc.Throughput{
+		Read:  2,
+		Write: 2,
+	}
+
 	// Perform update
 	c := suite.client
 	err = c.UpdateTable(table)
-	assert.Nil(err)
+	require.Nil(err)
 
 	resp, err := sdb.DescribeTable(&db.DescribeTableInput{
 		TableName: aws.String(table.Name),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	// Check if table is active and updated
 	desc := resp.Table

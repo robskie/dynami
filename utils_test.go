@@ -4,6 +4,7 @@ import dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute
 
 func (suite *DatabaseTestSuite) TestGetKey() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	// Test primary key
 	bookA := tBook{
@@ -12,10 +13,10 @@ func (suite *DatabaseTestSuite) TestGetKey() {
 	}
 
 	item, err := dbattribute.MarshalMap(bookA)
-	assert.Nil(err)
+	require.Nil(err)
 
 	key, err := getKey(bookA)
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal("", key.indexName)
 	assert.Equal(key.value["Title"], item["Title"])
 	assert.Equal(key.value["Author"], item["Author"])
@@ -27,10 +28,10 @@ func (suite *DatabaseTestSuite) TestGetKey() {
 	}
 
 	item, err = dbattribute.MarshalMap(bookB)
-	assert.Nil(err)
+	require.Nil(err)
 
 	key, err = getKey(bookB)
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Equal("GenreIndex", key.indexName)
 	assert.Equal(key.value["Genre"], item["Genre"])
 	assert.Equal(key.value["Title"], item["Title"])

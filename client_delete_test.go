@@ -1,6 +1,9 @@
 package dynami
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 	dbattribute "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -8,6 +11,7 @@ import (
 
 func (suite *DatabaseTestSuite) TestDelete() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	quote := tQuote{
 		Text:   "So many books, so little time.",
@@ -15,33 +19,35 @@ func (suite *DatabaseTestSuite) TestDelete() {
 	}
 
 	item, err := dbattribute.MarshalMap(quote)
-	assert.Nil(err)
-	item = removeEmptyAttr(item)
+	require.Nil(err)
 
 	sdb := suite.db
 	_, err = sdb.PutItem(&db.PutItemInput{
 		Item:      item,
 		TableName: aws.String("Quote"),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	c := suite.client
 	err = c.DeleteItem("Quote", quote)
-	assert.Nil(err)
+	require.Nil(err)
 
 	key := item
+	delete(key, "Topic")
 	delete(key, "Date")
+
 	out, err := sdb.GetItem(&db.GetItemInput{
 		Key:            key,
 		TableName:      aws.String("Quote"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Empty(out.Item)
 }
 
 func (suite *DatabaseTestSuite) TestDeleteMap() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	quote := map[string]interface{}{
 		"Text":   "So many books, so little time.",
@@ -49,31 +55,31 @@ func (suite *DatabaseTestSuite) TestDeleteMap() {
 	}
 
 	item, err := dbattribute.MarshalMap(quote)
-	assert.Nil(err)
+	require.Nil(err)
 
 	sdb := suite.db
 	_, err = sdb.PutItem(&db.PutItemInput{
 		Item:      item,
 		TableName: aws.String("Quote"),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 
 	c := suite.client
 	err = c.DeleteItem("Quote", quote)
-	assert.Nil(err)
+	require.Nil(err)
 
-	key := item
 	out, err := sdb.GetItem(&db.GetItemInput{
-		Key:            key,
+		Key:            item,
 		TableName:      aws.String("Quote"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Empty(out.Item)
 }
 
 func (suite *DatabaseTestSuite) TestBatchDelete() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	quotes := []tQuote{
 		{
@@ -93,14 +99,13 @@ func (suite *DatabaseTestSuite) TestBatchDelete() {
 	sdb := suite.db
 	for _, q := range quotes {
 		item, err := dbattribute.MarshalMap(q)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
+		require.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Quote"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
 	}
 
 	// Add duplicate key
@@ -108,18 +113,19 @@ func (suite *DatabaseTestSuite) TestBatchDelete() {
 
 	c := suite.client
 	err := c.BatchDelete("Quote", quotes).Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	out, err := sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("Quote"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Empty(out.Items)
 }
 
 func (suite *DatabaseTestSuite) TestBatchDeleteMap() {
 	assert := suite.Assert()
+	require := suite.Require()
 
 	quotes := []map[string]interface{}{
 		{
@@ -139,53 +145,45 @@ func (suite *DatabaseTestSuite) TestBatchDeleteMap() {
 	sdb := suite.db
 	for _, q := range quotes {
 		item, err := dbattribute.MarshalMap(q)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
+		require.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Quote"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
 	}
 
 	c := suite.client
 	err := c.BatchDelete("Quote", quotes).Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	out, err := sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("Quote"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Empty(out.Items)
 }
 
 func (suite *DatabaseTestSuite) TestBatchDeleteMultiTable() {
-	assert := suite.Assert()
+	if testing.Short() {
+		suite.T().SkipNow()
+	}
 
-	randBooks := make([]tBook, 100)
+	assert := suite.Assert()
+	require := suite.Require()
+
+	randBooks := make([]tBook, 50)
 	for i := range randBooks {
 		randBooks[i] = tBook{
 			Title:  randString(20),
 			Author: randString(15),
+			Genre:  randString(15),
 		}
 	}
 
-	sdb := suite.db
-	for _, b := range randBooks {
-		item, err := dbattribute.MarshalMap(b)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
-
-		_, err = sdb.PutItem(&db.PutItemInput{
-			Item:      item,
-			TableName: aws.String("Book"),
-		})
-		assert.Nil(err)
-	}
-
-	randQuotes := make([]tQuote, 30)
+	randQuotes := make([]tQuote, 150)
 	for i := range randQuotes {
 		randQuotes[i] = tQuote{
 			Author: randString(15),
@@ -193,16 +191,36 @@ func (suite *DatabaseTestSuite) TestBatchDeleteMultiTable() {
 		}
 	}
 
+	count := 0
+	nitems := len(randBooks) + len(randQuotes)
+
+	sdb := suite.db
+	for _, b := range randBooks {
+		item, err := dbattribute.MarshalMap(b)
+		require.Nil(err)
+
+		_, err = sdb.PutItem(&db.PutItemInput{
+			Item:      item,
+			TableName: aws.String("Book"),
+		})
+		require.Nil(err)
+
+		count++
+		fmt.Printf("\rAdding items (%d/%d)", count, nitems)
+	}
+
 	for _, q := range randQuotes {
 		item, err := dbattribute.MarshalMap(q)
-		assert.Nil(err)
-		item = removeEmptyAttr(item)
+		require.Nil(err)
 
 		_, err = sdb.PutItem(&db.PutItemInput{
 			Item:      item,
 			TableName: aws.String("Quote"),
 		})
-		assert.Nil(err)
+		require.Nil(err)
+
+		count++
+		fmt.Printf("\rAdding items (%d/%d)", count, nitems)
 	}
 
 	randBooks = append(randBooks, tBook{
@@ -210,23 +228,27 @@ func (suite *DatabaseTestSuite) TestBatchDeleteMultiTable() {
 		Author: randString(15),
 	})
 
+	fmt.Printf("\rDeleting items...      ")
+
 	c := suite.client
 	err := c.BatchDelete("Book", randBooks).
 		Delete("Quote", randQuotes).
 		Run()
-	assert.Nil(err)
+	require.Nil(err)
 
 	out, err := sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("Book"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Empty(out.Items)
 
 	out, err = sdb.Scan(&db.ScanInput{
 		TableName:      aws.String("Quote"),
 		ConsistentRead: aws.Bool(true),
 	})
-	assert.Nil(err)
+	require.Nil(err)
 	assert.Empty(out.Items)
+
+	fmt.Println("\rTest finished. Cleaning up...")
 }

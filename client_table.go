@@ -76,18 +76,32 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		if err != nil {
 			return fmt.Errorf("dynami: cannot update stream (%v)", err)
 		}
+
+		// Wait until table is finished updating
+		err = cdb.WaitUntilTableExists(&db.DescribeTableInput{
+			TableName: aws.String(table.Name),
+		})
+		if err != nil {
+			return fmt.Errorf("dynami: failed waiting for successful table update (%v)", err)
+		}
 	}
 
 	// Update table's provisioned throughput
-	tp := table.Throughput
-	otp := origt.Throughput
-	if tp.Read != otp.Read || tp.Write != otp.Write {
+	if *table.Throughput != *origt.Throughput {
 		_, err := cdb.UpdateTable(&db.UpdateTableInput{
 			TableName:             aws.String(table.Name),
-			ProvisionedThroughput: dbProvisionedThroughput(tp),
+			ProvisionedThroughput: dbProvisionedThroughput(table.Throughput),
 		})
 		if err != nil {
 			return fmt.Errorf("dynami: cannot update table (%v)", err)
+		}
+
+		// Wait until table is finished updating
+		err = cdb.WaitUntilTableExists(&db.DescribeTableInput{
+			TableName: aws.String(table.Name),
+		})
+		if err != nil {
+			return fmt.Errorf("dynami: failed waiting for successful table update (%v)", err)
 		}
 	}
 
@@ -107,10 +121,37 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		ogsi[idx.Name] = idx
 	}
 
+	// Remove global indices
+	for name := range ogsi {
+		if _, ok := gsi[name]; !ok {
+			deleteAction := &db.DeleteGlobalSecondaryIndexAction{
+				IndexName: aws.String(name),
+			}
+
+			_, err := cdb.UpdateTable(&db.UpdateTableInput{
+				TableName: aws.String(table.Name),
+				GlobalSecondaryIndexUpdates: []*db.GlobalSecondaryIndexUpdate{
+					{
+						Delete: deleteAction,
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("dynami: cannot delete global secondary index (%v)", err)
+			}
+
+			// Wait until all gsi's are active
+			err = waitUntilIndicesActive(cdb, table.Name)
+			if err != nil {
+				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+			}
+		}
+	}
+
 	// Perform create and queue update actions
 	var gsiUpdateActs []*db.GlobalSecondaryIndexUpdate
 	for name, idx := range gsi {
-		_, ok := ogsi[name]
+		oidx, ok := ogsi[name]
 
 		// Create GSI
 		if !ok {
@@ -146,7 +187,13 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			if err != nil {
 				return fmt.Errorf("dynami: cannot create global secondary index (%v)", err)
 			}
-		} else { // Update GSI
+
+			// Wait until all gsi's are active
+			err = waitUntilIndicesActive(cdb, table.Name)
+			if err != nil {
+				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+			}
+		} else if *idx.Throughput != *oidx.Throughput { // Update GSI
 			updateAction := &db.UpdateGlobalSecondaryIndexAction{
 				IndexName:             aws.String(name),
 				ProvisionedThroughput: dbProvisionedThroughput(idx.Throughput),
@@ -155,27 +202,6 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			gsiUpdateActs = append(gsiUpdateActs, &db.GlobalSecondaryIndexUpdate{
 				Update: updateAction,
 			})
-		}
-	}
-
-	// Perform delete actions
-	for name := range ogsi {
-		if _, ok := gsi[name]; !ok {
-			deleteAction := &db.DeleteGlobalSecondaryIndexAction{
-				IndexName: aws.String(name),
-			}
-
-			_, err := cdb.UpdateTable(&db.UpdateTableInput{
-				TableName: aws.String(table.Name),
-				GlobalSecondaryIndexUpdates: []*db.GlobalSecondaryIndexUpdate{
-					{
-						Delete: deleteAction,
-					},
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("dynami: cannot delete global secondary index (%v)", err)
-			}
 		}
 	}
 
@@ -188,20 +214,12 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		if err != nil {
 			return fmt.Errorf("dynami: cannot update global secondary index (%v)", err)
 		}
-	}
 
-	// Wait until table is active
-	err = cdb.WaitUntilTableExists(&db.DescribeTableInput{
-		TableName: aws.String(table.Name),
-	})
-	if err != nil {
-		return fmt.Errorf("dynami: failed waiting for successful table update (%v)", err)
-	}
-
-	// Wait until all gsi's are active
-	err = waitUntilIndicesActive(cdb, table.Name)
-	if err != nil {
-		return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+		// Wait until all gsi's are active
+		err = waitUntilIndicesActive(cdb, table.Name)
+		if err != nil {
+			return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+		}
 	}
 
 	return nil
@@ -265,7 +283,9 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 	table.PSize = int(*desc.TableSizeBytes)
 	table.PItemCount = int(*desc.ItemCount)
 	table.PStatus = schema.Status(*desc.TableStatus)
-	table.PCreationDate = *desc.CreationDateTime
+	if desc.CreationDateTime != nil {
+		table.PCreationDate = *desc.CreationDateTime
+	}
 	table.PStreamSpec = desc.StreamSpecification
 	if desc.LatestStreamArn != nil {
 		table.PStreamARN = *desc.LatestStreamArn
