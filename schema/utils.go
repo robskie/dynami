@@ -173,7 +173,7 @@ func GetSchema(item interface{}) *Table {
 			sidx := SecondaryIndex{Name: idx}
 
 			// Add projection
-			proj := &Projection{Type: ProjectInclude}
+			proj := Projection{Type: ProjectInclude}
 			for p := range projs[idx] {
 				proj.Include = append(proj.Include, p)
 			}

@@ -19,13 +19,13 @@ func TestNewTable(t *testing.T) {
 		Projected int `dbindex:"project,GlobalIndex"`
 	}
 
-	table := NewTable("TestTable", tStruct{}, map[string]*Throughput{
-		"TestTable":   &Throughput{1, 2},
-		"GlobalIndex": &Throughput{3, 4},
+	table := NewTable("TestTable", tStruct{}, map[string]Throughput{
+		"TestTable":   Throughput{1, 2},
+		"GlobalIndex": Throughput{3, 4},
 	})
 
 	assert.Equal(t, "TestTable", table.Name)
-	assert.Equal(t, &Throughput{1, 2}, table.Throughput)
+	assert.Equal(t, Throughput{1, 2}, table.Throughput)
 
 	expectedKeySchema := []Key{
 		{"Hash", HashKey},
@@ -51,7 +51,7 @@ func TestNewTable(t *testing.T) {
 				{"Hash", HashKey},
 				{"AnotherRange", RangeKey},
 			},
-			Projection: &Projection{
+			Projection: Projection{
 				Type: ProjectInclude,
 				Include: []string{
 					"AnotherRange",
@@ -72,7 +72,7 @@ func TestNewTable(t *testing.T) {
 			Key: []Key{
 				{"GlobalHash", HashKey},
 			},
-			Projection: &Projection{
+			Projection: Projection{
 				Type: ProjectInclude,
 				Include: []string{
 					"GlobalHash",
@@ -81,7 +81,7 @@ func TestNewTable(t *testing.T) {
 					"Range",
 				},
 			},
-			Throughput: &Throughput{3, 4},
+			Throughput: Throughput{3, 4},
 		},
 	}
 	require.Len(t, table.GlobalSecondaryIndexes, 1)

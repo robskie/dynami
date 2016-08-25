@@ -67,12 +67,12 @@ func ExampleClient_CreateTable(client *dynami.Client) {
 	table := schema.NewTable(
 		"TestTable",
 		TestItem{},
-		map[string]*schema.Throughput{
-			"TestTable": &schema.Throughput{
+		map[string]schema.Throughput{
+			"TestTable": schema.Throughput{
 				Read:  10,
 				Write: 20,
 			},
-			"GlobalIndex": &schema.Throughput{
+			"GlobalIndex": schema.Throughput{
 				Read:  30,
 				Write: 40,
 			},
@@ -88,7 +88,7 @@ func ExampleClient_UpdateTable(client *dynami.Client) {
 	table, _ := client.DescribeTable("TestTable")
 
 	// Update table throughput
-	table.Throughput = &schema.Throughput{
+	table.Throughput = schema.Throughput{
 		Read:  10,
 		Write: 20,
 	}
@@ -97,9 +97,9 @@ func ExampleClient_UpdateTable(client *dynami.Client) {
 	table.RemoveGlobalSecondaryIndex("GlobalIndexA")
 
 	// Add GlobalIndexB
-	table.AddGlobalSecondaryIndex(&schema.SecondaryIndex{
+	table.AddGlobalSecondaryIndex(schema.SecondaryIndex{
 		Name: "GlobalIndexB",
-		Throughput: &schema.Throughput{
+		Throughput: schema.Throughput{
 			Read:  30,
 			Write: 40,
 		},
@@ -118,8 +118,8 @@ func ExampleClient_UpdateTable(client *dynami.Client) {
 	})
 
 	// Update GlobalIndexC
-	idx := table.GetGlobalSecondaryIndex("GlobalIndexC")
-	idx.Throughput = &schema.Throughput{
+	idx, _ := table.GetGlobalSecondaryIndex("GlobalIndexC")
+	idx.Throughput = schema.Throughput{
 		Read:  50,
 		Write: 60,
 	}

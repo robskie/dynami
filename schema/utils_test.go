@@ -45,7 +45,7 @@ func TestFieldTags(t *testing.T) {
 				{"hash", HashKey},
 				{"another_range", RangeKey},
 			},
-			Projection: &Projection{
+			Projection: Projection{
 				Type: ProjectInclude,
 				Include: []string{
 					"another_range",
@@ -66,7 +66,7 @@ func TestFieldTags(t *testing.T) {
 			Key: []Key{
 				{"hash", HashKey},
 			},
-			Projection: &Projection{
+			Projection: Projection{
 				Type: ProjectInclude,
 				Include: []string{
 					"hash",
@@ -80,7 +80,7 @@ func TestFieldTags(t *testing.T) {
 			Key: []Key{
 				{"global_hash", HashKey},
 			},
-			Projection: &Projection{
+			Projection: Projection{
 				Type: ProjectInclude,
 				Include: []string{
 					"global_hash",

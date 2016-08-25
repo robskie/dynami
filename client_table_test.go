@@ -48,7 +48,7 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 
 	table := &sc.Table{
 		Name: "TestTable",
-		Throughput: &sc.Throughput{
+		Throughput: sc.Throughput{
 			Read:  1,
 			Write: 1,
 		},
@@ -69,7 +69,7 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 					{"Hash", sc.HashKey},
 					{"AnotherRange", sc.RangeKey},
 				},
-				Projection: &sc.Projection{
+				Projection: sc.Projection{
 					Type: sc.ProjectKeysOnly,
 				},
 			},
@@ -83,11 +83,11 @@ func (suite *DatabaseTestSuite) TestCreateTable() {
 						Type: sc.HashKey,
 					},
 				},
-				Throughput: &sc.Throughput{
+				Throughput: sc.Throughput{
 					Read:  1,
 					Write: 1,
 				},
-				Projection: &sc.Projection{
+				Projection: sc.Projection{
 					Type: sc.ProjectInclude,
 					Include: []string{
 						"GlobalHash",
@@ -460,7 +460,7 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 				Type: sc.StringType,
 			},
 		},
-		Throughput: &sc.Throughput{
+		Throughput: sc.Throughput{
 			Read:  1,
 			Write: 1,
 		},
@@ -483,10 +483,10 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 						Type: sc.HashKey,
 					},
 				},
-				Projection: &sc.Projection{
+				Projection: sc.Projection{
 					Type: sc.ProjectKeysOnly,
 				},
-				Throughput: &sc.Throughput{
+				Throughput: sc.Throughput{
 					Read:  2,
 					Write: 2,
 				},
@@ -499,10 +499,10 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 						Type: sc.HashKey,
 					},
 				},
-				Projection: &sc.Projection{
+				Projection: sc.Projection{
 					Type: sc.ProjectKeysOnly,
 				},
-				Throughput: &sc.Throughput{
+				Throughput: sc.Throughput{
 					Read:  2,
 					Write: 2,
 				},
@@ -533,8 +533,9 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	table.RemoveGlobalSecondaryIndex("GlobalIndexA")
 
 	// Update GlobalIndexB
-	idxB := table.GetGlobalSecondaryIndex("GlobalIndexB")
-	idxB.Throughput = &sc.Throughput{
+	idxB, err := table.GetGlobalSecondaryIndex("GlobalIndexB")
+	require.Nil(err)
+	idxB.Throughput = sc.Throughput{
 		Read:  1,
 		Write: 1,
 	}
@@ -542,7 +543,7 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	table.AddGlobalSecondaryIndex(idxB)
 
 	// Add GlobalIndexC
-	idxC := &sc.SecondaryIndex{
+	idxC := sc.SecondaryIndex{
 		Name: "GlobalIndexC",
 		Key: []sc.Key{
 			{
@@ -550,10 +551,10 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 				Type: sc.HashKey,
 			},
 		},
-		Projection: &sc.Projection{
+		Projection: sc.Projection{
 			Type: sc.ProjectAll,
 		},
-		Throughput: &sc.Throughput{
+		Throughput: sc.Throughput{
 			Read:  1,
 			Write: 1,
 		},
@@ -568,7 +569,7 @@ func (suite *DatabaseTestSuite) TestUpdateTable() {
 	})
 
 	// Update table throughput
-	table.Throughput = &sc.Throughput{
+	table.Throughput = sc.Throughput{
 		Read:  2,
 		Write: 2,
 	}

@@ -87,7 +87,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 	}
 
 	// Update table's provisioned throughput
-	if *table.Throughput != *origt.Throughput {
+	if table.Throughput != origt.Throughput {
 		_, err := cdb.UpdateTable(&db.UpdateTableInput{
 			TableName:             aws.String(table.Name),
 			ProvisionedThroughput: dbProvisionedThroughput(table.Throughput),
@@ -193,7 +193,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			if err != nil {
 				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
 			}
-		} else if *idx.Throughput != *oidx.Throughput { // Update GSI
+		} else if idx.Throughput != oidx.Throughput { // Update GSI
 			updateAction := &db.UpdateGlobalSecondaryIndexAction{
 				IndexName:             aws.String(name),
 				ProvisionedThroughput: dbProvisionedThroughput(idx.Throughput),
@@ -388,7 +388,7 @@ func dbAttributeDefinitions(attrs []schema.Attribute) []*db.AttributeDefinition 
 	return defs
 }
 
-func dbProjection(proj *schema.Projection) *db.Projection {
+func dbProjection(proj schema.Projection) *db.Projection {
 	projection := &db.Projection{
 		ProjectionType: aws.String(string(proj.Type)),
 	}
@@ -420,7 +420,7 @@ func dbLocalSecondaryIndexes(idxs []schema.SecondaryIndex) []*db.LocalSecondaryI
 	return localIdxs
 }
 
-func dbProvisionedThroughput(tp *schema.Throughput) *db.ProvisionedThroughput {
+func dbProvisionedThroughput(tp schema.Throughput) *db.ProvisionedThroughput {
 	return &db.ProvisionedThroughput{
 		ReadCapacityUnits:  aws.Int64(int64(tp.Read)),
 		WriteCapacityUnits: aws.Int64(int64(tp.Write)),
@@ -470,8 +470,8 @@ func keySchema(dbKeySchema []*db.KeySchemaElement) []schema.Key {
 	return keySchema
 }
 
-func projection(dbProj *db.Projection) *schema.Projection {
-	proj := &schema.Projection{
+func projection(dbProj *db.Projection) schema.Projection {
+	proj := schema.Projection{
 		Type: schema.ProjectionType(*dbProj.ProjectionType),
 	}
 
@@ -484,9 +484,9 @@ func projection(dbProj *db.Projection) *schema.Projection {
 	return proj
 }
 
-func throughput(dbThroughput interface{}) *schema.Throughput {
+func throughput(dbThroughput interface{}) schema.Throughput {
 	v := reflect.ValueOf(dbThroughput).Elem()
-	return &schema.Throughput{
+	return schema.Throughput{
 		Read:  int(v.FieldByName("ReadCapacityUnits").Elem().Int()),
 		Write: int(v.FieldByName("WriteCapacityUnits").Elem().Int()),
 	}

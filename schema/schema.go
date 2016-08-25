@@ -99,8 +99,8 @@ type iprivate struct {
 type SecondaryIndex struct {
 	Name       string
 	Key        []Key
-	Projection *Projection
-	Throughput *Throughput
+	Projection Projection
+	Throughput Throughput
 
 	// private read-only fields
 	iprivate
@@ -115,13 +115,13 @@ func (idx *SecondaryIndex) copy() SecondaryIndex {
 	cpy.Key = make([]Key, len(idx.Key))
 	copy(cpy.Key, idx.Key)
 
-	cpy.Projection = &Projection{Type: idx.Projection.Type}
+	cpy.Projection = Projection{Type: idx.Projection.Type}
 	if len(idx.Projection.Include) > 0 {
 		cpy.Projection.Include = make([]string, len(idx.Projection.Include))
 		copy(cpy.Projection.Include, idx.Projection.Include)
 	}
 
-	cpy.Throughput = &Throughput{
+	cpy.Throughput = Throughput{
 		Read:  idx.Throughput.Read,
 		Write: idx.Throughput.Write,
 	}
@@ -161,7 +161,7 @@ type Table struct {
 	Name                   string
 	Key                    []Key
 	Attributes             []Attribute
-	Throughput             *Throughput
+	Throughput             Throughput
 	LocalSecondaryIndexes  []SecondaryIndex
 	GlobalSecondaryIndexes []SecondaryIndex
 	StreamEnabled          bool
@@ -213,27 +213,26 @@ func (t *Table) AddAttributes(attributes []Attribute) {
 
 // AddLocalSecondaryIndex adds a new local secondary index to
 // the table. This will replace any index with the same name.
-func (t *Table) AddLocalSecondaryIndex(index *SecondaryIndex) {
+func (t *Table) AddLocalSecondaryIndex(index SecondaryIndex) {
 	for i, idx := range t.LocalSecondaryIndexes {
 		if idx.Name == index.Name {
-			t.LocalSecondaryIndexes[i] = *index
+			t.LocalSecondaryIndexes[i] = index
 			return
 		}
 	}
 
-	t.LocalSecondaryIndexes = append(t.LocalSecondaryIndexes, *index)
+	t.LocalSecondaryIndexes = append(t.LocalSecondaryIndexes, index)
 }
 
-// GetLocalSecondaryIndex returns a pointer to the index with the given name.
-func (t *Table) GetLocalSecondaryIndex(indexName string) *SecondaryIndex {
+// GetLocalSecondaryIndex returns the local index with the given name.
+func (t *Table) GetLocalSecondaryIndex(indexName string) (SecondaryIndex, error) {
 	for _, idx := range t.LocalSecondaryIndexes {
 		if idx.Name == indexName {
-			cpy := idx.copy()
-			return &cpy
+			return idx.copy(), nil
 		}
 	}
 
-	return nil
+	return SecondaryIndex{}, fmt.Errorf(`dynami: can't find local idx, "%s"`, indexName)
 }
 
 // RemoveLocalSecondaryIndex removes a local secondary index
@@ -252,27 +251,26 @@ func (t *Table) RemoveLocalSecondaryIndex(indexName string) {
 // AddGlobalSecondaryIndex adds a global secondary index to the
 // table. If an index with the same name is already present, then
 // it will be replaced by the given index.
-func (t *Table) AddGlobalSecondaryIndex(index *SecondaryIndex) {
+func (t *Table) AddGlobalSecondaryIndex(index SecondaryIndex) {
 	for i, idx := range t.GlobalSecondaryIndexes {
 		if idx.Name == index.Name {
-			t.GlobalSecondaryIndexes[i] = *index
+			t.GlobalSecondaryIndexes[i] = index
 			return
 		}
 	}
 
-	t.GlobalSecondaryIndexes = append(t.GlobalSecondaryIndexes, *index)
+	t.GlobalSecondaryIndexes = append(t.GlobalSecondaryIndexes, index)
 }
 
-// GetGlobalSecondaryIndex returns the index with the given name.
-func (t *Table) GetGlobalSecondaryIndex(indexName string) *SecondaryIndex {
+// GetGlobalSecondaryIndex returns the global index with the given name.
+func (t *Table) GetGlobalSecondaryIndex(indexName string) (SecondaryIndex, error) {
 	for _, idx := range t.GlobalSecondaryIndexes {
 		if idx.Name == indexName {
-			cpy := idx.copy()
-			return &cpy
+			return idx.copy(), nil
 		}
 	}
 
-	return nil
+	return SecondaryIndex{}, fmt.Errorf(`dynami: can't find global idx, "%s"`, indexName)
 }
 
 // RemoveGlobalSecondaryIndex removes the index with the
@@ -295,11 +293,11 @@ func (t *Table) RemoveGlobalSecondaryIndex(indexName string) {
 func NewTable(
 	tableName string,
 	item interface{},
-	throughput map[string]*Throughput) *Table {
+	throughput map[string]Throughput) *Table {
 
 	if tableName == "" {
 		panic("dynami: table name must not be empty")
-	} else if throughput[tableName] == nil {
+	} else if _, ok := throughput[tableName]; !ok {
 		panic("dynami: no provisioned throughput for table")
 	}
 
@@ -341,8 +339,8 @@ func NewTable(
 
 	// Add provisioned throughput for all global secondary indices
 	for i, idx := range table.GlobalSecondaryIndexes {
-		tp := throughput[idx.Name]
-		if tp == nil {
+		tp, ok := throughput[idx.Name]
+		if !ok {
 			panic(fmt.Errorf(
 				"dynami: no provisioned throughput for global index (%s)",
 				idx.Name,
