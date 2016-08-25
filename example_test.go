@@ -5,7 +5,9 @@ import (
 	"github.com/robskie/dynami/schema"
 )
 
-func ExampleClient_GetItem(client *dynami.Client) {
+var client = dynami.NewClient(dynami.USEast1, "TEST_ID", "TEST_KEY")
+
+func ExampleClient_GetItem() {
 	type TestItem struct {
 		Hash       string `dbkey:"hash"`
 		Range      string `dbkey:"range"`
@@ -28,7 +30,7 @@ func ExampleClient_GetItem(client *dynami.Client) {
 	client.GetItem("TestTable", &itemB)
 }
 
-func ExampleClient_GetStream(client *dynami.Client) {
+func ExampleClient_GetStream() {
 	type TestItem struct {
 		Hash  string `dbkey:"hash"`
 		Value int
@@ -53,7 +55,7 @@ func ExampleClient_GetStream(client *dynami.Client) {
 	}
 }
 
-func ExampleClient_CreateTable(client *dynami.Client) {
+func ExampleClient_CreateTable() {
 	type TestItem struct {
 		Hash       string `dbkey:"hash"`
 		Range      string `dbkey:"range"`
@@ -83,7 +85,7 @@ func ExampleClient_CreateTable(client *dynami.Client) {
 	client.CreateTable(table)
 }
 
-func ExampleClient_UpdateTable(client *dynami.Client) {
+func ExampleClient_UpdateTable() {
 	// Get table schema
 	table, _ := client.DescribeTable("TestTable")
 
