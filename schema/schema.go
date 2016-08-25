@@ -106,6 +106,29 @@ type SecondaryIndex struct {
 	iprivate
 }
 
+func (idx *SecondaryIndex) copy() SecondaryIndex {
+	cpy := SecondaryIndex{
+		Name:     idx.Name,
+		iprivate: idx.iprivate,
+	}
+
+	cpy.Key = make([]Key, len(idx.Key))
+	copy(cpy.Key, idx.Key)
+
+	cpy.Projection = &Projection{Type: idx.Projection.Type}
+	if len(idx.Projection.Include) > 0 {
+		cpy.Projection.Include = make([]string, len(idx.Projection.Include))
+		copy(cpy.Projection.Include, idx.Projection.Include)
+	}
+
+	cpy.Throughput = &Throughput{
+		Read:  idx.Throughput.Read,
+		Write: idx.Throughput.Write,
+	}
+
+	return cpy
+}
+
 // Size returns the index size in bytes.
 func (idx *SecondaryIndex) Size() int {
 	return idx.PSize
@@ -205,7 +228,8 @@ func (t *Table) AddLocalSecondaryIndex(index *SecondaryIndex) {
 func (t *Table) GetLocalSecondaryIndex(indexName string) *SecondaryIndex {
 	for _, idx := range t.LocalSecondaryIndexes {
 		if idx.Name == indexName {
-			return &idx
+			cpy := idx.copy()
+			return &cpy
 		}
 	}
 
@@ -243,7 +267,8 @@ func (t *Table) AddGlobalSecondaryIndex(index *SecondaryIndex) {
 func (t *Table) GetGlobalSecondaryIndex(indexName string) *SecondaryIndex {
 	for _, idx := range t.GlobalSecondaryIndexes {
 		if idx.Name == indexName {
-			return &idx
+			cpy := idx.copy()
+			return &cpy
 		}
 	}
 
