@@ -81,14 +81,6 @@ type shard struct {
 	closed bool
 }
 
-type bySeqNum []shard
-
-func (s bySeqNum) Len() int      { return len(s) }
-func (s bySeqNum) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-func (s bySeqNum) Less(i, j int) bool {
-	return s[i].seqRange.start.less(s[j].seqRange.start)
-}
-
 type shardIterator struct {
 	dbs *dynamodbstreams.DynamoDBStreams
 
@@ -296,7 +288,9 @@ func (it *RecordIterator) getShards(dbShards []*dynamodbstreams.Shard) []shard {
 		})
 	}
 
-	sort.Sort(bySeqNum(shards))
+	sort.Slice(shards, func(i, j int) bool {
+		return shards[i].seqRange.start.less(shards[j].seqRange.start)
+	})
 	return shards
 }
 
