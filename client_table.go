@@ -6,8 +6,10 @@ import (
 
 	"github.com/robskie/dynami/schema"
 
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/private/waiter"
+	"github.com/aws/aws-sdk-go/aws/request"
 	db "github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
@@ -141,7 +143,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			}
 
 			// Wait until all gsi's are active
-			err = waitUntilIndicesActive(cdb, table.Name)
+			err = waitUntilIndicesAreActive(cdb, table.Name)
 			if err != nil {
 				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
 			}
@@ -189,7 +191,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			}
 
 			// Wait until all gsi's are active
-			err = waitUntilIndicesActive(cdb, table.Name)
+			err = waitUntilIndicesAreActive(cdb, table.Name)
 			if err != nil {
 				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
 			}
@@ -216,7 +218,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		}
 
 		// Wait until all gsi's are active
-		err = waitUntilIndicesActive(cdb, table.Name)
+		err = waitUntilIndicesAreActive(cdb, table.Name)
 		if err != nil {
 			return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
 		}
@@ -545,27 +547,27 @@ func streamEnabled(dbStreamSpec *db.StreamSpecification) bool {
 	return *dbStreamSpec.StreamEnabled
 }
 
-func waitUntilIndicesActive(c *db.DynamoDB, tableName string) error {
-	waiterCfg := waiter.Config{
-		Operation:   "DescribeTable",
-		Delay:       20,
+func waitUntilIndicesAreActive(c *db.DynamoDB, tableName string) error {
+	w := request.Waiter{
+		Name:        "WaitUntilIndicesAreActive",
 		MaxAttempts: 25,
-		Acceptors: []waiter.WaitAcceptor{
+		Delay:       request.ConstantWaiterDelay(20 * time.Second),
+		Acceptors: []request.WaiterAcceptor{
 			{
-				State:    "success",
-				Matcher:  "path",
+				State:    request.SuccessWaiterState,
+				Matcher:  request.PathWaiterMatch,
 				Argument: "Table.GlobalSecondaryIndexes[*].IndexStatus",
 				Expected: string(schema.ActiveStatus),
 			},
 		},
-	}
-
-	w := waiter.Waiter{
-		Client: c,
-		Config: waiterCfg,
-		Input: &db.DescribeTableInput{
-			TableName: aws.String(tableName),
+		Logger: c.Config.Logger,
+		NewRequest: func(opts []request.Option) (*request.Request, error) {
+			req, _ := c.DescribeTableRequest(&db.DescribeTableInput{
+				TableName: aws.String(tableName),
+			})
+			return req, nil
 		},
 	}
-	return w.Wait()
+
+	return w.WaitWithContext(aws.BackgroundContext())
 }
