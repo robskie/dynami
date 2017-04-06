@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"strings"
 
 	sc "github.com/robskie/dynami/schema"
 
@@ -164,9 +165,39 @@ func isZeroValue(val reflect.Value) bool {
 
 func valueByName(val reflect.Value, name string) reflect.Value {
 	if val.Kind() == reflect.Struct {
-		return val.FieldByName(name)
+		v := val.FieldByName(name)
+		if !v.IsValid() {
+			v = fieldByNameTag(val, name)
+		}
+		return v
 	} else if val.Kind() == reflect.Map {
 		return val.MapIndex(reflect.ValueOf(name))
+	}
+
+	return reflect.Zero(val.Type())
+}
+
+func fieldByNameTag(val reflect.Value, name string) reflect.Value {
+	t := val.Type()
+	nf := t.NumField()
+	for i := 0; i < nf; i++ {
+		f := t.Field(i)
+
+		// Consider only exported fields
+		if f.PkgPath != "" {
+			continue
+		}
+
+		// Get name from dynamodbav or json tag
+		nameTag := f.Tag.Get("dynamodbav")
+		if nameTag == "" {
+			nameTag = f.Tag.Get("json")
+		}
+
+		tags := strings.Split(nameTag, ",")
+		if len(tags) > 0 && tags[0] == name {
+			return val.FieldByName(f.Name)
+		}
 	}
 
 	return reflect.Zero(val.Type())
