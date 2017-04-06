@@ -232,7 +232,7 @@ func (t *Table) GetLocalSecondaryIndex(indexName string) (SecondaryIndex, error)
 		}
 	}
 
-	return SecondaryIndex{}, fmt.Errorf(`dynami: can't find local idx, "%s"`, indexName)
+	return SecondaryIndex{}, fmt.Errorf("dynami: can't find local index (%v)", indexName)
 }
 
 // RemoveLocalSecondaryIndex removes a local secondary index
@@ -270,7 +270,7 @@ func (t *Table) GetGlobalSecondaryIndex(indexName string) (SecondaryIndex, error
 		}
 	}
 
-	return SecondaryIndex{}, fmt.Errorf(`dynami: can't find global idx, "%s"`, indexName)
+	return SecondaryIndex{}, fmt.Errorf("dynami: can't find global index (%v)", indexName)
 }
 
 // RemoveGlobalSecondaryIndex removes the index with the
@@ -298,7 +298,7 @@ func NewTable(
 	if tableName == "" {
 		panic("dynami: table name must not be empty")
 	} else if _, ok := throughput[tableName]; !ok {
-		panic("dynami: no provisioned throughput for table")
+		panic(fmt.Errorf("dynami: no provisioned throughput for table (%v)", tableName))
 	}
 
 	table := &Table{
@@ -341,10 +341,7 @@ func NewTable(
 	for i, idx := range table.GlobalSecondaryIndexes {
 		tp, ok := throughput[idx.Name]
 		if !ok {
-			panic(fmt.Errorf(
-				"dynami: no provisioned throughput for global index (%s)",
-				idx.Name,
-			))
+			panic(fmt.Errorf("dynami: no provisioned throughput for global index (%v)", idx.Name))
 		}
 
 		table.GlobalSecondaryIndexes[i].Throughput = tp

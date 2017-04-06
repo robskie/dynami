@@ -45,7 +45,7 @@ func (c *Client) CreateTable(table *schema.Table) error {
 		TableName: aws.String(table.Name),
 	})
 	if err != nil {
-		return fmt.Errorf("dynami: failed waiting for table creation (%v)", err)
+		return fmt.Errorf("dynami: waiting for table creation failed (%v)", err)
 	}
 	return err
 }
@@ -84,7 +84,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			TableName: aws.String(table.Name),
 		})
 		if err != nil {
-			return fmt.Errorf("dynami: failed waiting for successful table update (%v)", err)
+			return fmt.Errorf("dynami: waiting for table update failed (%v)", err)
 		}
 	}
 
@@ -103,7 +103,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			TableName: aws.String(table.Name),
 		})
 		if err != nil {
-			return fmt.Errorf("dynami: failed waiting for successful table update (%v)", err)
+			return fmt.Errorf("dynami: waiting for table update failed (%v)", err)
 		}
 	}
 
@@ -145,7 +145,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			// Wait until all gsi's are active
 			err = waitUntilIndicesAreActive(cdb, table.Name)
 			if err != nil {
-				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+				return fmt.Errorf("dynami: waiting for index update failed (%v)", err)
 			}
 		}
 	}
@@ -168,7 +168,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			for _, k := range idx.Key {
 				attr, ok := attrs[k.Name]
 				if !ok {
-					return fmt.Errorf("dynami: missing attribute definition")
+					return fmt.Errorf("dynami: missing attribute definition for key (%v)", k.Name)
 				}
 
 				attrDefs = append(attrDefs, &db.AttributeDefinition{
@@ -193,7 +193,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 			// Wait until all gsi's are active
 			err = waitUntilIndicesAreActive(cdb, table.Name)
 			if err != nil {
-				return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+				return fmt.Errorf("dynami: waiting for index update failed (%v)", err)
 			}
 		} else if idx.Throughput != oidx.Throughput { // Update GSI
 			updateAction := &db.UpdateGlobalSecondaryIndexAction{
@@ -220,7 +220,7 @@ func (c *Client) UpdateTable(table *schema.Table) error {
 		// Wait until all gsi's are active
 		err = waitUntilIndicesAreActive(cdb, table.Name)
 		if err != nil {
-			return fmt.Errorf("dynami: failed waiting for successful index update (%v)", err)
+			return fmt.Errorf("dynami: waiting for index update failed (%v)", err)
 		}
 	}
 
@@ -297,7 +297,7 @@ func (c *Client) DeleteTable(tableName string) (*schema.Table, error) {
 		TableName: aws.String(tableName),
 	})
 	if err != nil {
-		return table, fmt.Errorf("dynami: failed waiting for table deletion (%v)", err)
+		return table, fmt.Errorf("dynami: waiting for table deletion failed (%v)", err)
 	}
 	return table, nil
 }

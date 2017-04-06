@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -74,21 +75,22 @@ func GetSchema(item interface{}) *Table {
 			}
 
 			// Get name from dynamodbav or json tag
-			nameTag := f.Tag.Get("dynamodbav")
-			if nameTag == "" {
-				nameTag = f.Tag.Get("json")
+			name := f.Name
+			attrTag := f.Tag.Get("dynamodbav")
+			if attrTag == "" {
+				attrTag = f.Tag.Get("json")
 			}
-			tags := strings.Split(nameTag, ",")
+			tags := strings.Split(attrTag, ",")
 			if len(tags) > 0 && tags[0] != "" {
-				f.Name = tags[0]
+				name = tags[0]
 			}
 
 			keyTag := f.Tag.Get("dbkey")
 			if keyTag != "" {
-				ks := &Key{Name: f.Name}
-				defs[f.Name] = &Attribute{
-					Name: f.Name,
-					Type: getAttrType(f.Type),
+				ks := &Key{Name: name}
+				defs[name] = &Attribute{
+					Name: name,
+					Type: getAttrType(f),
 				}
 
 				if keyTag == tagHashAttr {
@@ -98,7 +100,10 @@ func GetSchema(item interface{}) *Table {
 					ks.Type = RangeKey
 					ranges[""] = ks
 				} else {
-					panic("dynami: invalid dbkey field tag")
+					panic(fmt.Errorf("dynami: invalid dbkey tag (%v) on struct field (%v)",
+						keyTag,
+						f.Name,
+					))
 				}
 			}
 
@@ -106,7 +111,10 @@ func GetSchema(item interface{}) *Table {
 			if indexTag != "" {
 				parts := strings.Split(indexTag, ",")
 				if len(parts)&1 != 0 {
-					panic("dynami: invalid dbindex field tag")
+					panic(fmt.Errorf("dynami: invalid dbindex tag (%v) on struct field (%v)",
+						indexTag,
+						f.Name,
+					))
 				}
 
 				for i := 0; i < len(parts); i += 2 {
@@ -118,29 +126,32 @@ func GetSchema(item interface{}) *Table {
 					}
 
 					if parts[i] == tagHashAttr {
-						defs[f.Name] = &Attribute{
-							Name: f.Name,
-							Type: getAttrType(f.Type),
+						defs[name] = &Attribute{
+							Name: name,
+							Type: getAttrType(f),
 						}
 						hashes[parts[i+1]] = &Key{
-							Name: f.Name,
+							Name: name,
 							Type: HashKey,
 						}
-						proj[f.Name] = true
+						proj[name] = true
 					} else if parts[i] == tagRangeAttr {
-						defs[f.Name] = &Attribute{
-							Name: f.Name,
-							Type: getAttrType(f.Type),
+						defs[name] = &Attribute{
+							Name: name,
+							Type: getAttrType(f),
 						}
 						ranges[parts[i+1]] = &Key{
-							Name: f.Name,
+							Name: name,
 							Type: RangeKey,
 						}
-						proj[f.Name] = true
+						proj[name] = true
 					} else if parts[i] == tagProjectedAttr {
-						proj[f.Name] = true
+						proj[name] = true
 					} else {
-						panic("dynami: invalid dbindex field tag")
+						panic(fmt.Errorf("dynami: invalid dbindex tag (%v) on struct field (%v)",
+							parts[i],
+							f.Name,
+						))
 					}
 				}
 			}
@@ -150,7 +161,7 @@ func GetSchema(item interface{}) *Table {
 		pkey := []Key{}
 		pkhash, ok := hashes[""]
 		if !ok {
-			panic("dynami: primary key is not tagged")
+			panic(fmt.Errorf("dynami: primary key for struct (%v) is not tagged", t.Name()))
 		}
 		pkey = append(pkey, *pkhash)
 		pkrange, ok := ranges[""]
@@ -225,7 +236,8 @@ func GetSchema(item interface{}) *Table {
 	return s
 }
 
-func getAttrType(t reflect.Type) AttributeType {
+func getAttrType(f reflect.StructField) AttributeType {
+	t := f.Type
 	switch t.Kind() {
 	case reflect.String:
 		return StringType
@@ -233,15 +245,14 @@ func getAttrType(t reflect.Type) AttributeType {
 		reflect.Int32, reflect.Int64, reflect.Uint,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Float32, reflect.Float64:
-
 		return NumberType
 	case reflect.Array, reflect.Slice:
 		et := t.Elem().Kind()
 		if et != reflect.Uint8 {
-			panic("dynami: field must be a byte slice, number or string")
+			panic(fmt.Errorf("dynami: key field (%v) must be a byte slice, number or string", f.Name))
 		}
 		return StringType
 	default:
-		panic("dynami: field must be a byte slice, number or string")
+		panic(fmt.Errorf("dynami: key field (%v) must be a byte slice, number or string", f.Name))
 	}
 }

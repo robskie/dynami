@@ -14,7 +14,7 @@ import (
 
 // BatchError represents a batch operation error.
 // The outer map specifies the table where the error
-// occurred and the inner map gives the index of the
+// occurred and the inner map contains the index of the
 // input element that caused the error.
 type BatchError map[string]map[int]error
 

@@ -374,10 +374,10 @@ func parseExpression(expr string, values []interface{}) (*exprValue, error) {
 	v := &exprValue{}
 	vphs := map[string]bool{}
 
-	// Replace 'AND' in BETWEEN expressions to '&'
-	expr = reAndRepl.ReplaceAllString(expr, "$1&$3")
+	// Copy and replace 'AND' in BETWEEN expressions to '&'
+	cexpr := reAndRepl.ReplaceAllString(expr, "$1&$3")
 
-	andSubExpr := strings.Split(expr, " AND ")
+	andSubExpr := strings.Split(cexpr, " AND ")
 	for i, andExpr := range andSubExpr {
 		orSubExpr := strings.Split(andExpr, " OR ")
 		for j, orExpr := range orSubExpr {
@@ -400,7 +400,7 @@ func parseExpression(expr string, values []interface{}) (*exprValue, error) {
 			}
 
 			if err != nil {
-				return nil, fmt.Errorf("dynami: invalid expression")
+				return nil, fmt.Errorf("dynami: invalid expression (%v)", expr)
 			}
 
 			// Check for duplicate value placeholders
@@ -438,7 +438,7 @@ func parseExpression(expr string, values []interface{}) (*exprValue, error) {
 func parseFuncExpr(expr string) (string, []string, error) {
 	if m := reFunc.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 3 {
-			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%v)", expr)
 		}
 
 		attrName := ""
@@ -452,14 +452,14 @@ func parseFuncExpr(expr string) (string, []string, error) {
 		case "attribute_type", "begins_with", "contains":
 			parts := splitCSV(trimRightP(m[2]))
 			if len(parts) != 2 {
-				err := fmt.Errorf("dynami: invalid func expression (%s)", funcName)
+				err := fmt.Errorf("dynami: invalid arguments for function expression (%v)", funcName)
 				return "", nil, err
 			}
 
 			attrName = parts[0]
 			vph = parts[1:]
 		default:
-			err := fmt.Errorf("dynami: unknown func expression (%s)", funcName)
+			err := fmt.Errorf("dynami: unknown function expression (%v)", funcName)
 			return "", nil, err
 		}
 
@@ -472,7 +472,7 @@ func parseFuncExpr(expr string) (string, []string, error) {
 func parseInExpr(expr string) (string, []string, error) {
 	if m := reIn.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 3 {
-			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%v)", expr)
 		}
 
 		return trimLeftP(m[1]), splitCSV(trimRightP(m[2])), nil
@@ -484,7 +484,7 @@ func parseInExpr(expr string) (string, []string, error) {
 func parseBetweenExpr(expr string) (string, []string, error) {
 	if m := reBetween.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 4 {
-			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%v)", expr)
 		}
 
 		return trimLeftP(m[1]), []string{m[2], trimRightP(m[3])}, nil
@@ -496,14 +496,14 @@ func parseBetweenExpr(expr string) (string, []string, error) {
 func parseCompExpr(expr string) (string, []string, error) {
 	if m := reComp.FindStringSubmatch(expr); len(m) > 0 {
 		if len(m) != 3 {
-			return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
+			return "", nil, fmt.Errorf("dynami: invalid expression (%v)", expr)
 		}
 
 		// Parse size function if present
 		attrName := trimLeftP(m[1])
 		if mf := reFunc.FindStringSubmatch(attrName); len(mf) > 0 {
 			if len(mf) != 3 || mf[1] != "size" {
-				return "", nil, fmt.Errorf("dynami: invalid expression (%s)", expr)
+				return "", nil, fmt.Errorf("dynami: invalid expression (%v)", expr)
 			}
 			attrName = mf[2]
 		}
