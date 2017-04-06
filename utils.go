@@ -58,7 +58,11 @@ func getPrimaryKey(item interface{}) (*dbkey, error) {
 	schema := sc.GetSchema(item)
 	key := &dbkey{value: dbitem{}}
 	for _, k := range schema.Key {
-		v := valueByName(val, k.Name)
+		v, err := valueByName(val, k.Name)
+		if err != nil {
+			return nil, fmt.Errorf("dynami: key (%v) has no value", k.Name)
+		}
+
 		if isZeroValue(v) {
 			return nil, fmt.Errorf("dynami: incomplete primary key")
 		}
@@ -160,21 +164,24 @@ func toPtr(v interface{}) interface{} {
 }
 
 func isZeroValue(val reflect.Value) bool {
-	return val.Interface() == reflect.Zero(val.Type()).Interface()
+	return !val.IsValid() || val.Interface() == reflect.Zero(val.Type()).Interface()
 }
 
-func valueByName(val reflect.Value, name string) reflect.Value {
+func valueByName(val reflect.Value, name string) (reflect.Value, error) {
+	v := reflect.Value{}
 	if val.Kind() == reflect.Struct {
-		v := val.FieldByName(name)
+		v = val.FieldByName(name)
 		if !v.IsValid() {
 			v = fieldByNameTag(val, name)
 		}
-		return v
 	} else if val.Kind() == reflect.Map {
-		return val.MapIndex(reflect.ValueOf(name))
+		v = val.MapIndex(reflect.ValueOf(name))
 	}
 
-	return reflect.Zero(val.Type())
+	if !v.IsValid() {
+		return v, fmt.Errorf("dynami: cannot find value with name (%v)", name)
+	}
+	return v, nil
 }
 
 func fieldByNameTag(val reflect.Value, name string) reflect.Value {
@@ -200,7 +207,7 @@ func fieldByNameTag(val reflect.Value, name string) reflect.Value {
 		}
 	}
 
-	return reflect.Zero(val.Type())
+	return reflect.Value{}
 }
 
 func checkType(item interface{}, types ...interface{}) error {
