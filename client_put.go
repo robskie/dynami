@@ -58,7 +58,7 @@ func (c *Client) BatchPut(tableName string, items interface{}) *BatchPut {
 		tables: map[string]bool{},
 	}
 
-	err := checkSliceType(items, reflect.Struct, map[string]interface{}{})
+	err := checkSliceType(items, reflect.Interface, reflect.Struct, map[string]interface{}{})
 	if err != nil {
 		b.err = err
 		return b
@@ -78,7 +78,7 @@ func (b *BatchPut) Put(tableName string, items interface{}) *BatchPut {
 	} else if b.tables[tableName] {
 		b.err = fmt.Errorf("dynami: only one BatchPut operation per table is allowed")
 		return b
-	} else if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
+	} else if err := checkSliceType(items, reflect.Interface, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
 		return b
 	}

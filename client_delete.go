@@ -53,7 +53,7 @@ func (c *Client) BatchDelete(tableName string, items interface{}) *BatchDelete {
 	}
 	b.tables[tableName] = true
 
-	err := checkSliceType(items, reflect.Struct, map[string]interface{}{})
+	err := checkSliceType(items, reflect.Interface, reflect.Struct, map[string]interface{}{})
 	if err != nil {
 		b.err = err
 		return b
@@ -72,7 +72,7 @@ func (b *BatchDelete) Delete(tableName string, items interface{}) *BatchDelete {
 	} else if b.tables[tableName] {
 		b.err = fmt.Errorf("dynami: only one BatchDelete operation per table is allowed")
 		return b
-	} else if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
+	} else if err := checkSliceType(items, reflect.Interface, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
 		return b
 	}

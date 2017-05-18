@@ -130,7 +130,7 @@ func (c *Client) BatchGet(
 		consistent: map[string]bool{},
 	}
 
-	if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
+	if err := checkSliceType(items, reflect.Interface, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
 		return b
 	}
@@ -157,7 +157,7 @@ func (b *BatchGet) Get(
 	} else if _, ok := b.items[tableName]; ok {
 		b.err = fmt.Errorf("dynami: only one BatchGet operation per table is allowed")
 		return b
-	} else if err := checkSliceType(items, reflect.Struct, map[string]interface{}{}); err != nil {
+	} else if err := checkSliceType(items, reflect.Interface, reflect.Struct, map[string]interface{}{}); err != nil {
 		b.err = err
 		return b
 	}
